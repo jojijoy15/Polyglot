@@ -20,12 +20,23 @@ public class StringRevision {
   }
 
   /*
-    Check Anagrams
+    Check Anagrams Approach 1
   */
   public boolean checkAnagram(String first, String second) {
     var arr1 = first.chars().mapToObj(c -> (char) c).sorted(Comparator.naturalOrder()).toArray(Character[]::new);
     var arr2 = second.chars().mapToObj(c -> (char) c).sorted(Comparator.naturalOrder()).toArray(Character[]::new);
     return Arrays.equals(arr1, arr2);
+  }
+
+  /*
+   Check Anagrams Approach 2
+ */
+  public boolean detectAnagram(String firstWord, String secondWord) {
+    Map<Character, Long> firstWordMap = firstWord.chars()
+        .mapToObj(e -> (char) e).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    Map<Character, Long> secondWordMap = secondWord.chars()
+        .mapToObj(e -> (char) e).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    return firstWordMap.equals(secondWordMap);
   }
 
   /*

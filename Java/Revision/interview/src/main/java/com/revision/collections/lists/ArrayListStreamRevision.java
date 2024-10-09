@@ -4,6 +4,7 @@ import com.revision.algorithms.PrimeNumberAlgorithms;
 import com.revision.model.Employee;
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -11,6 +12,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class ArrayListStreamRevision {
@@ -51,7 +53,7 @@ public class ArrayListStreamRevision {
     Remove duplicates
   */
   public <T> List<T> removeDuplicates(List<T> elements) {
-    return elements.stream().collect(Collectors.toSet()).stream().toList();
+    return new HashSet<>(elements).stream().toList();
   }
 
   /*
@@ -147,6 +149,15 @@ public class ArrayListStreamRevision {
     Long maxCount = frequency.entrySet().stream()
         .max(Entry.comparingByValue())
         .orElse(Map.entry((T) new Object(), 0L)).getValue(); // hack Object
-    return frequency.entrySet().stream().filter(e -> e.getValue().equals(maxCount)).map(e -> e.getKey()).toList();
+    return frequency.entrySet().stream().filter(e -> e.getValue().equals(maxCount)).map(Entry::getKey).toList();
+  }
+
+  /*
+   Given a sequence of consecutive numbers find missing number
+  */
+  public int findMissingNumber(int start, int end, List<Integer> numbers) {
+    int sum = numbers.stream().mapToInt(Integer::intValue).sum();
+    int expectedSum = IntStream.rangeClosed(start, end).sum();
+    return expectedSum - sum;
   }
 }

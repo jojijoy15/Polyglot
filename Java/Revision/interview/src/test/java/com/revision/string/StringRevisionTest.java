@@ -17,13 +17,13 @@ class StringRevisionTest {
 
   @BeforeEach
   void setUp() {
-    this.instanceUnderTest = new StringRevision();
+    instanceUnderTest = new StringRevision();
   }
 
   @Test
   void test_should_return_empty_map_for_empty_word() {
     String word = "";
-    Map<Character, Long> occurrences = this.instanceUnderTest
+    Map<Character, Long> occurrences = instanceUnderTest
         .countCharacterOccurrencesInWord(word);
     Assertions.assertThat(occurrences).isEmpty();
   }
@@ -31,7 +31,7 @@ class StringRevisionTest {
   @Test
   void test_should_return_map_of_character_and_its_count_in_word() {
     String word = "Dummy Word";
-    Map<Character, Long> occurrences = this.instanceUnderTest
+    Map<Character, Long> occurrences = instanceUnderTest
         .countCharacterOccurrencesInWord(word);
     Assertions.assertThat(occurrences).containsAllEntriesOf(
         Map.of('D', 1L, 'u', 1L,
@@ -43,20 +43,29 @@ class StringRevisionTest {
   }
 
   @Test
-  void test_should_check_if_two_given_string_are_anagram() {
+  void test_should_check_if_two_given_strings_are_anagram() {
     var first = "program";
     var second = "grmproa";
-    assertThat(this.instanceUnderTest.checkAnagram(first, second)).isTrue();
-    assertThat(this.instanceUnderTest.checkAnagram(first, "")).isFalse();
+    assertThat(instanceUnderTest.checkAnagram(first, second)).isTrue();
+    assertThat(instanceUnderTest.checkAnagram(first, "")).isFalse();
   }
 
   @Test
-  void test_should_correctly_detect_palindrome() {
-    assertThat(this.instanceUnderTest.checkIfPalindrome("malayalam")).isTrue();
-    assertThat(this.instanceUnderTest.checkIfPalindrome("")).isTrue();
-    assertThat(this.instanceUnderTest.checkIfPalindrome("a")).isTrue();
-    assertThat(this.instanceUnderTest.checkIfPalindrome("abba")).isTrue();
-    assertThat(this.instanceUnderTest.checkIfPalindrome("ab")).isFalse();
+  void test_should_detect_if_two_given_strings_are_anagram() {
+    var first = "listen";
+    var second = "silent";
+    assertThat(instanceUnderTest.detectAnagram(first, second)).isTrue();
+    assertThat(instanceUnderTest.detectAnagram(first, "")).isFalse();
+    assertThat(instanceUnderTest.detectAnagram("a", "a")).isTrue();
+  }
+
+  @Test
+  void test_should_correctly_check_palindrome() {
+    assertThat(instanceUnderTest.checkIfPalindrome("malayalam")).isTrue();
+    assertThat(instanceUnderTest.checkIfPalindrome("")).isTrue();
+    assertThat(instanceUnderTest.checkIfPalindrome("a")).isTrue();
+    assertThat(instanceUnderTest.checkIfPalindrome("abba")).isTrue();
+    assertThat(instanceUnderTest.checkIfPalindrome("ab")).isFalse();
   }
 
   @Test
@@ -65,9 +74,9 @@ class StringRevisionTest {
     List<String> words = lines.stream().flatMap(e -> Arrays.stream(e.split("[\\s.,;:!?\"]+")))
           .distinct()
           .toList();
-    assertThat(this.instanceUnderTest.getLongestWords(words))
+    assertThat(instanceUnderTest.getLongestWords(words))
         .isEqualTo(List.of("grasshopper"));
-    assertThat(this.instanceUnderTest.getLongestWords(Collections.emptyList()))
+    assertThat(instanceUnderTest.getLongestWords(Collections.emptyList()))
         .isEqualTo(Collections.emptyList());
   }
 }

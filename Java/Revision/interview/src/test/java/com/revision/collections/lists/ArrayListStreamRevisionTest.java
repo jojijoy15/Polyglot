@@ -26,14 +26,14 @@ class ArrayListStreamRevisionTest {
 
   @BeforeEach
   void setUp() {
-    this.instanceUnderTest = new ArrayListStreamRevision();
+    instanceUnderTest = new ArrayListStreamRevision();
   }
 
   @Test
   void test_should_partition_prime_and_composite_numbers() {
     var elements = new ArrayList<>(List.of(1, 2, 3, 5, 10, 23, 600, 1001, 2000));
     elements.add(null);
-    Map<Boolean, List<Integer>> result = this.instanceUnderTest.partitionPrimeAndComposite(elements);
+    Map<Boolean, List<Integer>> result = instanceUnderTest.partitionPrimeAndComposite(elements);
     assertThat(result.get(true)).doesNotContainNull().hasSameElementsAs(List.of(1, 2, 3, 5, 23));
     assertThat(result.get(false)).doesNotContainNull().hasSameElementsAs(List.of(10, 600, 1001, 2000));
   }
@@ -41,7 +41,7 @@ class ArrayListStreamRevisionTest {
   @ParameterizedTest
   @MethodSource("primeGenerationUpToResultVerification")
   void test_should_return_prime_number_till_N(int number, List<Integer> expectedResultant) {
-    List<Integer> result = this.instanceUnderTest.generatePrimeNumber(number);
+    List<Integer> result = instanceUnderTest.generatePrimeNumber(number);
     assertThat(result).isEqualTo(expectedResultant);
   }
 
@@ -58,7 +58,7 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_sort_employees_by_salary() {
     List<Employee> employees = EmployeeGenerator.generateEmployees();
-    List<Employee> result = this.instanceUnderTest.sortEmployeesBasedOnSalary(employees);
+    List<Employee> result = instanceUnderTest.sortEmployeesBasedOnSalary(employees);
     assertThat(result).isNotSameAs(employees);
     assertThat(result).isSortedAccordingTo(Comparator.comparing(Employee::salary));
   }
@@ -66,7 +66,7 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_partition_numbers_based_on_odd_even_predicate() {
     List<Integer> integers = NumberGenerator.generateBoundedIntegers(10, 20, 40);
-    Map<Boolean, List<Integer>> result = this.instanceUnderTest
+    Map<Boolean, List<Integer>> result = instanceUnderTest
         .partitionNumbersBasedOnPredicate(integers, e -> (e & 1) == 0);
     //Even numbers assertions
     assertThat(result.get(true)).containsAll(integers.stream().filter( e -> (e & 1) ==0).toList());
@@ -80,13 +80,13 @@ class ArrayListStreamRevisionTest {
     int size = words.size();
     words.addAll(words); //simulating duplicates
     assertThat(words).hasSize(2*size);
-    List<String> result = this.instanceUnderTest.removeDuplicates(words);
+    List<String> result = instanceUnderTest.removeDuplicates(words);
     assertThat(result).doesNotHaveDuplicates();
   }
 
   @Test
   void test_should_return_empty_map_for_empty_list() {
-    Map<String, Long> frequency = this.instanceUnderTest
+    Map<String, Long> frequency = instanceUnderTest
         .countOccurrencesInList(Collections.emptyList());
     assertThat(frequency).isEmpty();
   }
@@ -94,7 +94,7 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_return_correct_count_of_occurrences_in_list() {
     List<String> words = List.of("Apple", "World", "Jewels", "Planet", "World", "Jewellery", "Apple");
-    Map<String, Long> frequency = this.instanceUnderTest.countOccurrencesInList(words);
+    Map<String, Long> frequency = instanceUnderTest.countOccurrencesInList(words);
     assertThat(frequency).containsAllEntriesOf(
       Map.of("Apple", 2L,
              "World", 2L,
@@ -111,36 +111,36 @@ class ArrayListStreamRevisionTest {
             new BigDecimal(4),  new BigDecimal(121.32),
             new BigDecimal(110), new BigDecimal(223.12)
     );
-    List<BigDecimal> result = this.instanceUnderTest.reverseDecimals(decimals);
+    List<BigDecimal> result = instanceUnderTest.reverseDecimals(decimals);
     assertThat(result).isSortedAccordingTo((e, f)-> -e.compareTo(f));
   }
 
   @Test
   void test_should_join_words_with_prefix_suffix_delimiter() {
     List<String> words = List.of("words", "are", "there");
-    String joinedWord = this.instanceUnderTest.joinWordsUsingPrefixSuffix(words, "{", "}", ",");
+    String joinedWord = instanceUnderTest.joinWordsUsingPrefixSuffix(words, "{", "}", ",");
     assertThat(joinedWord).isEqualTo("{ words },{ are },{ there }");
   }
 
   @Test
   void test_should_return_divisibility_by_5() {
     List<Integer> numbers = List.of(10, 4, 32, 51, 50, 400, 21);
-    List<Integer> result = this.instanceUnderTest.divisibilityByN(numbers, 5);
+    List<Integer> result = instanceUnderTest.divisibilityByN(numbers, 5);
     assertThat(result).hasSameElementsAs(List.of(10, 50, 400));
   }
 
   @Test
   void test_should_return_max() {
     List<Integer> numbers = List.of(10, 32, 53, 53, 4, 12, 10, -5, -2);
-    assertThat(this.instanceUnderTest.findMax(numbers)).isEqualTo(53);
-    assertThat(this.instanceUnderTest.findMax(Collections.emptyList())).isEqualTo(Integer.MIN_VALUE);
+    assertThat(instanceUnderTest.findMax(numbers)).isEqualTo(53);
+    assertThat(instanceUnderTest.findMax(Collections.emptyList())).isEqualTo(Integer.MIN_VALUE);
   }
 
   @Test
   void test_should_return_min() {
     List<Integer> numbers = List.of(10, 32, 53, 4, 12, 10, -5, -5, -2);
-    assertThat(this.instanceUnderTest.findMin(numbers)).isEqualTo(-5);
-    assertThat(this.instanceUnderTest.findMin(Collections.emptyList())).isEqualTo(Integer.MAX_VALUE);
+    assertThat(instanceUnderTest.findMin(numbers)).isEqualTo(-5);
+    assertThat(instanceUnderTest.findMin(Collections.emptyList())).isEqualTo(Integer.MAX_VALUE);
 
   }
 
@@ -148,7 +148,7 @@ class ArrayListStreamRevisionTest {
   void test_should_merge_two_unsorted_list_in_sorted_order() {
     List<Integer> list1 = List.of(10, 5, 12, 34, 0, -10, 41, 14);
     List<Integer> list2 = List.of(25, 54, 5, 12, 100, 3, 32, -1);
-    List<Integer> result = this.instanceUnderTest.mergeAsSortedList(list1, list2);
+    List<Integer> result = instanceUnderTest.mergeAsSortedList(list1, list2);
     assertThat(result).isSortedAccordingTo(Comparator.naturalOrder())
         .isEqualTo(List.of(-10, -1, 0, 3, 5, 5, 10, 12, 12, 14, 25, 32, 34, 41, 54, 100));
   }
@@ -157,7 +157,7 @@ class ArrayListStreamRevisionTest {
   void test_should_merge_two_unsorted_list_in_sorted_order_with_unique_elements() {
     List<Integer> list1 = List.of(10, 5, 12, 34, 0, -10, 41, 14);
     List<Integer> list2 = List.of(25, 54, 5, 12, 100, 3, 32, -1);
-    List<Integer> result = this.instanceUnderTest.mergeAsSortedListWithDistinct(list1, list2);
+    List<Integer> result = instanceUnderTest.mergeAsSortedListWithDistinct(list1, list2);
     assertThat(result).isSortedAccordingTo(Comparator.naturalOrder())
         .isEqualTo(List.of(-10, -1, 0, 3, 5, 10, 12, 14, 25, 32, 34, 41, 54, 100));
   }
@@ -165,43 +165,43 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_return_expected_sum() {
     List<Integer> numbers = IntStream.rangeClosed(1, 10).boxed().toList();
-    assertThat(this.instanceUnderTest.findSum(numbers)).isEqualTo(55);
+    assertThat(instanceUnderTest.findSum(numbers)).isEqualTo(55);
   }
 
   @Test
   void test_should_return_zero_for_empty_list() {
     List<Integer> numbers = Collections.emptyList();
-    assertThat(this.instanceUnderTest.findSum(numbers)).isEqualTo(0);
+    assertThat(instanceUnderTest.findSum(numbers)).isEqualTo(0);
   }
 
   @Test
   void test_should_return_words_sorted_as_per_length() {
     List<String> words = StringGenerator.generateLorenIpsumWords(10);
-    List<String> result = this.instanceUnderTest.sortWordsBasedOnLength(words);
+    List<String> result = instanceUnderTest.sortWordsBasedOnLength(words);
     assertThat(result).isSortedAccordingTo(Comparator.comparing(String::length));
   }
 
   @Test
   void test_should_return_expected_average() {
     List<Integer> numbers = IntStream.rangeClosed(1, 10).boxed().toList();
-    assertThat(this.instanceUnderTest.findAverage(numbers)).isEqualTo(5.5);
+    assertThat(instanceUnderTest.findAverage(numbers)).isEqualTo(5.5);
   }
 
   @Test
   void test_should_return_common_elements() {
     List<String> wordle1 = List.of("Apple", "Banana", "Aeroplane");
     List<String> wordle2 = List.of("Elephant", "Banana", "Apple");
-    List<String> result1 = this.instanceUnderTest.findIntersection(wordle1, wordle2);
+    List<String> result1 = instanceUnderTest.findIntersection(wordle1, wordle2);
     assertThat(result1).hasSameElementsAs(List.of("Apple", "Banana"));
-    assertThat(this.instanceUnderTest.findIntersection(wordle1, Collections.emptyList())).isEmpty();
+    assertThat(instanceUnderTest.findIntersection(wordle1, Collections.emptyList())).isEmpty();
   }
 
   @Test
   void test_should_return_duplicates() {
     List<String> fruits = List.of("Apple", "Banana", "Orange", "Kiwi", "Banana", "Orange");
     List<Integer> numbers = List.of(12, 42, 22, 41, 42, 44, 54, 12);
-    List<String> result1 = this.instanceUnderTest.getDuplicates(fruits);
-    List<Integer> result2 = this.instanceUnderTest.getDuplicates(numbers);
+    List<String> result1 = instanceUnderTest.getDuplicates(fruits);
+    List<Integer> result2 = instanceUnderTest.getDuplicates(numbers);
     assertThat(result1).hasSameElementsAs(List.of("Banana", "Orange"));
     assertThat(result2).hasSameElementsAs(List.of(12, 42));
   }
@@ -209,9 +209,9 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_return_most_frequent_element() {
     List<String> fruits = List.of("Apple", "Orange", "Kiwi", "Apple", "Banana");
-    List<String> result = this.instanceUnderTest.mostRepeatedElement(fruits);
+    List<String> result = instanceUnderTest.mostRepeatedElement(fruits);
     assertThat(result).isEqualTo(List.of("Apple"));
-    List<String> emptyResult = this.instanceUnderTest.mostRepeatedElement(Collections.emptyList());
+    List<String> emptyResult = instanceUnderTest.mostRepeatedElement(Collections.emptyList());
     assertThat(emptyResult).isEqualTo(Collections.emptyList());
 
   }
@@ -219,8 +219,34 @@ class ArrayListStreamRevisionTest {
   @Test
   void test_should_return_most_frequent_element_when_multiple_elements_are_frequent() {
     List<String> fruits = List.of("Apple", "Orange", "Pears", "Orange", "Orange", "Apple", "Apple");
-    List<String> result = this.instanceUnderTest.mostRepeatedElement(fruits);
+    List<String> result = instanceUnderTest.mostRepeatedElement(fruits);
     assertThat(result).isEqualTo(List.of("Apple", "Orange"));
   }
 
+  @Test
+  void test_should_return_missing_number_for_sequence_of_numbers() {
+    List<Integer> numbers = List.of(2, 3, 4, 5, 7);
+    int result = instanceUnderTest.findMissingNumber(2, 7, numbers);
+    assertThat(result).isEqualTo(6);
+  }
+
+  @Test
+  void test_should_return_missing_number_for_sequence_of_negative_numbers() {
+    List<Integer> numbers = List.of(-1, -3, -4, -5, -6, -7);
+    int result = instanceUnderTest.findMissingNumber(-7, -1, numbers);
+    assertThat(result).isEqualTo(-2);
+  }
+
+  @Test
+  void test_should_return_missing_number_for_sequence_positive_negative_numbers() {
+    List<Integer> numbers = List.of(-2, -1, 1, 2, 3);
+    int result = instanceUnderTest.findMissingNumber(-2, 3, numbers);
+    assertThat(result).isEqualTo(-0);
+  }
+
+  @Test
+  void test_should_return_zero_for_empty_sequence() {
+    int result = instanceUnderTest.findMissingNumber(0, 0, Collections.emptyList());
+    assertThat(result).isEqualTo(0);
+  }
 }

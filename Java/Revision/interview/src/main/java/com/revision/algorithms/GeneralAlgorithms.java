@@ -16,4 +16,12 @@ public class GeneralAlgorithms {
     return IntStream.rangeClosed(1, factorialOf)
         .reduce(1, (a, b) -> a * b);
   }
+
+  public String binaryOfInteger(int number) {
+    return IntStream.rangeClosed(0, 31)
+        .mapToObj(e -> String.valueOf(number >>> (31 - e) & 1 ))
+        .reduce((a, b) -> a + b)
+        .orElse("");
+  }
+
 }

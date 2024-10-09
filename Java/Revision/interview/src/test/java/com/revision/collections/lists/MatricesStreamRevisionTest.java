@@ -22,7 +22,7 @@ class MatricesStreamRevisionTest {
       {-11, -12, -14},
       {11, 100, 104}
     };
-    List<Integer> maxElements = this.instanceUnderTest.findMaxElementInEachRow(matrices);
+    List<Integer> maxElements = instanceUnderTest.findMaxElementInEachRow(matrices);
     assertThat(maxElements).containsAll(List.of(10, -11, 104));
   }
 
