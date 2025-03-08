@@ -2,7 +2,7 @@ package com.revision.concurrency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.revision.datagenerator.FileOps;
+import com.revision.utils.FileOps;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

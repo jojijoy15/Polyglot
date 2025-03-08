@@ -2,10 +2,10 @@ package com.revision.collections.lists;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.revision.datagenerator.EmployeeGenerator;
-import com.revision.datagenerator.NumberGenerator;
-import com.revision.datagenerator.StringGenerator;
-import com.revision.model.Employee;
+import com.revision.model.SalariedEmployee;
+import com.utils.datagenerator.EmployeeGenerator;
+import com.utils.datagenerator.NumberGenerator;
+import com.utils.datagenerator.StringGenerator;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,10 +57,10 @@ class ArrayListStreamRevisionTest {
 
   @Test
   void test_should_sort_employees_by_salary() {
-    List<Employee> employees = EmployeeGenerator.generateEmployees();
-    List<Employee> result = instanceUnderTest.sortEmployeesBasedOnSalary(employees);
-    assertThat(result).isNotSameAs(employees);
-    assertThat(result).isSortedAccordingTo(Comparator.comparing(Employee::salary));
+    List<SalariedEmployee> salariedEmployees = EmployeeGenerator.generateEmployees();
+    List<SalariedEmployee> result = instanceUnderTest.sortEmployeesBasedOnSalary(salariedEmployees);
+    assertThat(result).isNotSameAs(salariedEmployees);
+    assertThat(result).isSortedAccordingTo(Comparator.comparing(SalariedEmployee::salary));
   }
 
   @Test

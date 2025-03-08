@@ -1,23 +1,23 @@
-package com.revision.datagenerator;
+package com.utils.datagenerator;
 
-import com.revision.datagenerator.configurations.FakerConfiguration;
-import com.revision.model.Employee;
+import com.revision.model.SalariedEmployee;
+import com.utils.datagenerator.configurations.FakerConfiguration;
 import java.util.List;
 import java.util.stream.IntStream;
 import net.datafaker.Faker;
 
 public class EmployeeGenerator {
 
-  public static List<Employee> generateEmployees() {
+  public static List<SalariedEmployee> generateEmployees() {
     Faker f = FakerConfiguration.createSimpeFaker();
-    List<Employee> employees = IntStream.rangeClosed(1, 10)
-        .mapToObj(e -> new Employee(
+    List<SalariedEmployee> salariedEmployees = IntStream.rangeClosed(1, 10)
+        .mapToObj(e -> new SalariedEmployee(
             f.name().firstName(), f.name().lastName(),
             f.number().numberBetween(18, 50),
             f.number().randomDouble(0, 1000, 5000),
             f.number().numberBetween(1, 10))
         ).toList();
-    return employees;
+    return salariedEmployees;
   }
 
 }

@@ -1,6 +1,6 @@
-package com.revision.datagenerator;
+package com.utils.datagenerator;
 
-import com.revision.datagenerator.configurations.FakerConfiguration;
+import com.utils.datagenerator.configurations.FakerConfiguration;
 import java.util.List;
 
 public class StringGenerator {

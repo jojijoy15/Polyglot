@@ -1,6 +1,5 @@
-package com.revision.datagenerator;
+package com.utils.datagenerator;
 
-import com.revision.datagenerator.configurations.FakerConfiguration;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;

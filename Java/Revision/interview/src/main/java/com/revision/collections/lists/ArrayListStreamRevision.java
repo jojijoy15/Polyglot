@@ -1,7 +1,7 @@
 package com.revision.collections.lists;
 
 import com.revision.algorithms.PrimeNumberAlgorithms;
-import com.revision.model.Employee;
+import com.revision.model.SalariedEmployee;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -34,10 +34,10 @@ public class ArrayListStreamRevision {
   }
 
   /*
-   Sort employees bases on salary
+   Sort salariedEmployees bases on salary
    */
-  public List<Employee> sortEmployeesBasedOnSalary(List<Employee> employees) {
-    return employees.stream().sorted(Comparator.comparing(Employee::salary))
+  public List<SalariedEmployee> sortEmployeesBasedOnSalary(List<SalariedEmployee> salariedEmployees) {
+    return salariedEmployees.stream().sorted(Comparator.comparing(SalariedEmployee::salary))
         .toList();
   }
 

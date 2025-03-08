@@ -1,4 +1,4 @@
-package com.revision.datagenerator.configurations;
+package com.utils.datagenerator.configurations;
 
 import net.datafaker.Faker;
 

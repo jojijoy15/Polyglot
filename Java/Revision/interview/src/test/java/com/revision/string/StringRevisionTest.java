@@ -2,7 +2,7 @@ package com.revision.string;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import com.revision.datagenerator.FileOps;
+import com.revision.utils.FileOps;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;

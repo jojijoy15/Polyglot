@@ -1,0 +1,20 @@
+[
+  {
+    "id": "af6ca338-df37-477c-bc34-44d64556a6b2",
+    "name": "Joji",
+    "age": 30,
+    "identifiedAs": "M"
+  },
+  {
+    "id": "af6ca338-df37-477c-bc34-44d24516a6b2",
+    "name": "Joy",
+    "age": 60,
+    "identifiedAs": "M"
+  },
+  {
+    "id": "af6ca131-df37-477c-bc34-44d24516a6b2",
+    "name": "Mariamma",
+    "age": 60,
+    "identifiedAs": "F"
+  }
+]

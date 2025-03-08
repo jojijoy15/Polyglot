@@ -1,8 +1,9 @@
-package com.revision.datagenerator;
+package com.revision.utils;
 
 import io.vavr.control.Try;
 import java.io.FileReader;
 import java.io.Reader;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,5 +46,15 @@ public class FileOps {
       throw new RuntimeException(error.getMessage());
     });
     return Collections.emptyMap();
+  }
+
+  public static String getFileContents(String path) {
+    Path filePath = Paths.get(path);
+    return Try.of(() -> Files.readString(filePath, Charset.defaultCharset()))
+        .getOrElseThrow(error -> {
+              logger.error("The file could not be read {}", error);
+              return new RuntimeException(error.getMessage());
+            }
+        );
   }
 }

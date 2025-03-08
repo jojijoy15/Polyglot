@@ -18,7 +18,7 @@ class GeneralAlgorithmsTest {
   @Test
   void test_calculate_age() {
     assertThat(instanceUnderTest.calculateAge(LocalDate.of(1967, 2, 5)))
-        .isEqualTo(57);
+        .isEqualTo(58);
     assertThat(instanceUnderTest.calculateAge(LocalDate.of(1961, 7, 14)))
         .isEqualTo(63);
     assertThat(instanceUnderTest.calculateAge(LocalDate.of(2099, 7, 14)))
