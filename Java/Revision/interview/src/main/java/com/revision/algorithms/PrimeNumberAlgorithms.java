@@ -1,11 +1,8 @@
 package com.revision.algorithms;
 
-import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 
 public class PrimeNumberAlgorithms {
