@@ -38,7 +38,7 @@ public class StreamsProblems {
   public Map<String, Integer> sortByValue(LinkedHashMap<String, Integer> words) {
     return words.entrySet()
         .stream()
-        .sorted(Comparator.comparing(Entry::getValue))
+        .sorted(Entry.comparingByValue())
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey, Map.Entry::getValue,

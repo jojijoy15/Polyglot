@@ -8,7 +8,7 @@ public class ArrayStreamProblems {
 
   public List<Integer> denormalize2DArrays(int[][] array) {
     return Arrays.stream(array)
-        .flatMapToInt(e -> Arrays.stream(e))
+        .flatMapToInt(Arrays::stream)
         .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
   }
 }
