@@ -1,6 +1,5 @@
 package streams;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import data.Generator;
@@ -8,10 +7,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import model.Employee;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StreamsProblemsTest {
 
@@ -21,6 +25,14 @@ class StreamsProblemsTest {
   void squareOfIntegers() {
     final List<Integer> integers = sp.squareOfIntegers(List.of(1, 2, 3, 4, 5));
     assertThat(integers).hasSize(2).hasSameSizeAs(List.of(4, 16));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"swiss", "akakssbbw", "w"})
+  void firstNonRepeatingCharacter(String word) {
+    final Optional<Character> nonRepeatingCharacter = sp.firstNonRepeatingCharacter(word);
+    assertThat(nonRepeatingCharacter).isPresent().get()
+        .isEqualTo('w');
   }
 
   @Test
@@ -110,5 +122,39 @@ class StreamsProblemsTest {
     assertThat(joinedUpperCaseWords).doesNotContainPattern("\\*null\\*");
   }
 
+  @Test
+  void sum() {
+    final List<Integer> integers = List.of(12, 14, 20, 21);
+    final Integer sum = sp.sum(integers);
+    assertThat(sum).isEqualTo(67);
+  }
 
+
+  @Test
+  void averageSalaryByDepartment() {
+    // Prepare
+    List<Employee> employees = IntStream.rangeClosed(1, 15)
+        .mapToObj(e -> Generator.getEmployee())
+        .toList();
+    final Map<String, List<Employee>> employeesByDepartment = sp.groupEmployeesByDepartment(employees);
+    // Finding expected result by long route
+    final Map<String, Double> expectedAverageSalaryByDepartment = employeesByDepartment.entrySet().stream()
+        .flatMap(e -> {
+          List<Employee> emps = e.getValue();
+          Double average = emps.stream().mapToDouble(es -> es.getSalary().doubleValue()).average().getAsDouble();
+          return Stream.of(Map.entry(e.getKey(), average));
+        }).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+    // Act
+    final Map<String, Double> actualAvgSalaryByDepartment = sp.averageSalaryByDepartment(employees);
+    // Assert
+    assertThat(actualAvgSalaryByDepartment)
+        .containsAllEntriesOf(expectedAverageSalaryByDepartment);
+  }
+
+  @Test
+  void divisibleBy17And19() {
+    final Stream<Integer> iterate = Stream.iterate(1, (a) -> a + 1);
+    final Integer i = sp.divisibleBy17And19(iterate);
+    assertThat(i).isNotEqualTo(-1).isEqualTo(323);
+  }
 }
