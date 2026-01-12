@@ -51,7 +51,7 @@ public class StreamsProblems {
         .sorted(Entry.comparingByValue())
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue,
+                Entry::getKey, Entry::getValue,
                 (a, b )-> a, LinkedHashMap::new
             )
         );
@@ -166,7 +166,7 @@ public class StreamsProblems {
     return IntStream.range(0, len)
         .mapToObj(i -> Map.entry(words.get(i), integers.get(i)))
         .collect(Collectors.toMap(
-            Map.Entry::getKey, Map.Entry::getValue,
+            Entry::getKey, Entry::getValue,
             (e1, e2) -> e1, LinkedHashMap::new
         ));
   }
