@@ -157,4 +157,40 @@ class StreamsProblemsTest {
     final Integer i = sp.divisibleBy17And19(iterate);
     assertThat(i).isNotEqualTo(-1).isEqualTo(323);
   }
+
+  @Test
+  void topNElements() {
+    List<Integer> numbers = List.of(343, -34, 21, 45, 17, 32);
+    final List<Integer> top3Elements = sp.topNElements(numbers, 3);
+    assertThat(top3Elements)
+        .containsExactly(343, 45, 32);
+  }
+
+  @Test
+  void findLongestWordBasedOnFirstCharacter() {
+    List<String> words = List.of("abracadabra", "cat", "kettle", "kite", "caliber", "apple");
+    final Map<Character, String> longestWordBasedOnFirstCharacter = sp
+        .findLongestWordBasedOnFirstCharacter(words);
+    assertThat(longestWordBasedOnFirstCharacter)
+        .containsAllEntriesOf(
+            Map.ofEntries(
+            Map.entry('a', "abracadabra"),
+            Map.entry('c', "caliber"),
+            Map.entry('k', "kettle")
+        ));
+  }
+
+  @Test
+  void prepareMapFromLists() {
+    List<String> words = List.of("hello", "world");
+    List<Integer> integers = List.of(1, 2);
+    final Map<String, Integer> preparedMap = sp.prepareMapFromLists(words, integers);
+    assertThat(preparedMap)
+        .containsAllEntriesOf(
+            Map.ofEntries(
+                Map.entry("hello", 1),
+                Map.entry("world", 2)
+            )
+        );
+  }
 }

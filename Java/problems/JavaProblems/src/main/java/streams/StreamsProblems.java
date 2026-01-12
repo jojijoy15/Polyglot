@@ -7,7 +7,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import model.Employee;
 
@@ -123,4 +126,48 @@ public class StreamsProblems {
         .findFirst().orElse(-1);
   }
 
+  /*
+  Given a list of integers, find the top 3 distinct largest numbers.
+  Constraints:
+    - Do not sort the entire list.
+    - Return results in descending order.
+   */
+  public List<Integer> topNElements(List<Integer> integers, int size) {
+    return integers.stream()
+        .distinct()
+        .collect(
+            () -> new TreeSet<Integer>(Comparator.reverseOrder()),
+            (set, n) -> {
+              set.add(n);
+              if (set.size() > size) {
+                set.pollLast();
+              }
+            },
+            (set1, set2) -> {
+                set1.addAll(set2);
+                while (set1.size() > size) {
+                  set1.pollLast();
+                }
+            }
+        ).stream().toList();
+  }
+
+  //Given a list of strings, find the longest word for each starting character.
+  public Map<Character, String> findLongestWordBasedOnFirstCharacter(List<String> words) {
+    return words.stream()
+        .collect(Collectors.toMap(e -> e.charAt(0), Function.identity(),
+                  (e1, e2) -> e1.length() >= e2.length() ? e1 : e2));
+  }
+
+  // Merge Two Lists into an Ordered Map
+  // assume lists are of same size
+  public Map<String, Integer> prepareMapFromLists(List<String> words, List<Integer> integers) {
+    int len = Math.min(words.size(), integers.size());
+    return IntStream.range(0, len)
+        .mapToObj(i -> Map.entry(words.get(i), integers.get(i)))
+        .collect(Collectors.toMap(
+            Map.Entry::getKey, Map.Entry::getValue,
+            (e1, e2) -> e1, LinkedHashMap::new
+        ));
+  }
 }
