@@ -1,9 +1,10 @@
 package recursion.sorting;
 
-public class MergeSort {
+public class MergeSort implements Sort {
 
-  public void sort(int[] elements) {
+  public int[] sort(int[] elements) {
     mergeSort(elements, 0, elements.length-1);
+    return elements;
   }
 
   private void mergeSort(int[] arr, int start, int end) {

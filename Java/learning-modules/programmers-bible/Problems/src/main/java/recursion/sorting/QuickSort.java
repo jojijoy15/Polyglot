@@ -1,6 +1,6 @@
 package recursion.sorting;
 
-public class QuickSort {
+public class QuickSort implements Sort {
 
   public int[] sort(int[] elements) {
     quickSort(elements, 0, elements.length-1);

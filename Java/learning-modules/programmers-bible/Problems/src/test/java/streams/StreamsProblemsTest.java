@@ -214,4 +214,17 @@ class StreamsProblemsTest {
     List<OrderItem> orderItems = Generator.getOrderItems();
     final List<OrderItem> mostPurchasedOrderItems = sp.findMostPurchasedOrderItems(orderItems);
   }
+
+  @Test
+  void calculateAverageMarks() {
+    String[][] studentsMark = new String[][]{
+            { "Bobby", "87" },
+            { "Charles", "100" },
+            { "Eric", "64" },
+            { "Charles", "22" }
+    };
+    Double averageMarks = sp.calculateAverageMarks(studentsMark);
+    assertThat(averageMarks).isEqualTo(87);
+
+  }
 }

@@ -230,4 +230,18 @@ public class StreamsProblems {
     return entrySet.getValue();
   }
 
+  public Double calculateAverageMarks(String[][] studentsMark) {
+
+      Map<String, Double> averages = Arrays.stream(studentsMark)
+              .map(e -> Map.entry(e[0], Integer.parseInt(e[1])))
+              .collect(Collectors.groupingBy(Entry::getKey, Collectors.averagingDouble(Entry::getValue)))
+              .entrySet()
+              .stream()
+              .map(e -> Map.entry(e.getKey(), Math.floor(e.getValue())))
+              .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 + e2 / 2, LinkedHashMap::new));
+       return averages.values().toArray(Double[]::new)[0];
+  }
+
+
 }

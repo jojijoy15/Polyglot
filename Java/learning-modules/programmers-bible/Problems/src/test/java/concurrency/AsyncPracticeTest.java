@@ -1,17 +1,10 @@
 package concurrency;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.JsonNodeCreator;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
+
+import concurrency.async.AsyncPractice;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
 
 class AsyncPracticeTest {
 

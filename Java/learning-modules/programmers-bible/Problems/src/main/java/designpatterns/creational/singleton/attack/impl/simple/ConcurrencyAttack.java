@@ -17,7 +17,8 @@ public class ConcurrencyAttack implements FakeSingletonDetectorAttack {
 
         int nThreads = Runtime.getRuntime().availableProcessors();
         logger.info("Concurrency attack on singleton instance begins with thread count : " + nThreads);
-        try (ExecutorService ex = Executors.newFixedThreadPool(nThreads)) {
+        ExecutorService ex = Executors.newFixedThreadPool(nThreads);
+        try {
 
             List<Callable<SimpleSingleton>> callables = simpleSingletonBreakTaskProvider(nThreads);
             List<Future<SimpleSingleton>> futures = ex.invokeAll(callables);
@@ -36,6 +37,7 @@ public class ConcurrencyAttack implements FakeSingletonDetectorAttack {
         } catch (InterruptedException e) {
            throw new RuntimeException(e);
        } finally {
+            ex.shutdown();
            logger.info("Executors closed");
        }
     }
