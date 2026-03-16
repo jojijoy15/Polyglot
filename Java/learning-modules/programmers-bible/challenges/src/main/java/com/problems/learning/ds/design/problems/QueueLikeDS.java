@@ -1,4 +1,4 @@
-package com.problems.learning.ds.design;
+package com.problems.learning.ds.design.problems;
 
 import java.util.ArrayList;
 import java.util.List;

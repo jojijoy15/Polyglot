@@ -9,13 +9,14 @@ public class QuickSort implements Sort {
 
   void quickSort(int[] arr, int low, int high) {
     if(low < high) {
-      int partition = partition(arr, low, high);
-      quickSort(arr, low,  partition - 1);
+      int partition = lomutoPartition(arr, low, high);
+      quickSort(arr, low,  partition - 1); // change this for hoare's partition to high = partition
       quickSort(arr, partition + 1, high);
      }
   }
 
-  private int partition(int[] arr, int low, int high) {
+  //Lomuto Partition
+  private int lomutoPartition(int[] arr, int low, int high) {
     int pivot = arr[high];
     int j = low;
     for (int i = low; i <= high; i++) {
@@ -26,6 +27,27 @@ public class QuickSort implements Sort {
     }
     swap(arr, high, j);//swap the pivot at correct place
     return j;
+  }
+
+  //Hoare's partition
+  private int hoarePartition(int[] arr, int low, int high) {
+    int pivot = arr[low];
+    int i = low - 1;
+    int j = high + 1;
+    while(true) {
+      do {
+        i++;
+      } while(arr[i] < pivot);
+
+      do {
+        j--;
+      } while(arr[j] > pivot);
+
+      if(i >= j) {
+        return j;
+      }
+      swap(arr, i, j);
+    }
   }
 
   private void swap(int[] arr, int i, int j) {

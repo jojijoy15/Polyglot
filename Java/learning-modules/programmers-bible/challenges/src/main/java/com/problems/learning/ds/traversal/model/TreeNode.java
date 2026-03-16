@@ -1,8 +1,10 @@
 package com.problems.learning.ds.traversal.model;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class TreeNode<T>  {
 
     TreeNode<T> left;

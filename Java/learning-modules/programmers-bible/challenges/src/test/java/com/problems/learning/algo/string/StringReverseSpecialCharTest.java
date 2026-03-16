@@ -43,10 +43,12 @@ class StringReverseSpecialCharTest {
         assertThat(actual).isEqualTo("0#l$l@e!H");
     }
 
+
+
     @Test
-    void reverseWithSpecialCharIntactConsecutiveSpecialChar() {
-        String input = "HH$$ll!!";
+    void reverseWithSpecialCharIntactConsecutiveSpecialChar2() {
+        String input = "/gH?yZx";
         String actual = stringAlgorithms.reverseWithSpecialCharIntact(input);
-        assertThat(actual).isEqualTo("ll$$HH!!");
+        assertThat(actual).isEqualTo("/xZ?yHg");
     }
 }

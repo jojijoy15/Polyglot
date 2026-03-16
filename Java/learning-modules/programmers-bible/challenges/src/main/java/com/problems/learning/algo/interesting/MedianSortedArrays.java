@@ -13,7 +13,7 @@ public class MedianSortedArrays {
         }
         int left = 0;
         int right = first.length; // smaller array
-        while(left <= right){
+        while(left <= right) {
             int i = (left + right)/2; //first partition
             int j = half - i; //second partition
 

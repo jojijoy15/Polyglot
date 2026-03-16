@@ -1,5 +1,6 @@
 package com.problems.learning.ds.design;
 
+import com.problems.learning.ds.design.problems.QueueLikeDS;
 import org.junit.jupiter.api.Test;
 
 import java.util.NoSuchElementException;

@@ -1,4 +1,4 @@
-package com.problems.learning.algo.string;
+package com.problems.learning.algo.string.subsequence;
 
 import org.junit.jupiter.api.Test;
 
@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 class LongestCommonSubSequenceTest {
 

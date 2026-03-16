@@ -223,8 +223,21 @@ class StreamsProblemsTest {
             { "Eric", "64" },
             { "Charles", "22" }
     };
-    Double averageMarks = sp.calculateAverageMarks(studentsMark);
+    Double averageMarks = sp.calculateAverageMarks(studentsMark,
+            Map.Entry.<String, Double>comparingByValue().reversed());
     assertThat(averageMarks).isEqualTo(87);
+  }
+
+  @Test
+  void calculateAverageNegativeMarks() {
+    String[][] studentsMark = new String[][]{
+            { "Bobby", "-64" },
+            { "Charles", "-65" },
+            { "Eric", "-10" },
+            { "Charles", "-66"}
+    };
+    Double averageMarks = sp.calculateAverageMarks(studentsMark, Map.Entry.<String, Double>comparingByValue());
+    assertThat(averageMarks).isEqualTo(-66);
 
   }
 }

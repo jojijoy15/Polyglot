@@ -15,7 +15,7 @@ public class HeapSort implements Sort {
 
     @Override
     public int[] sort(int[] elements) {
-        heapify(elements);
+        heapify(elements); //max Heap sort
         for (int end = elements.length - 1; end > 0; end--) {
 
             // Swap root with last element
@@ -30,7 +30,7 @@ public class HeapSort implements Sort {
     }
 
     private void heapify(int[] elements) {
-        int heapSize = elements.length/2 - 1 ;
+        int heapSize = elements.length/2 - 1;
         for (int i = heapSize; i >= 0; i--) {
            percolateDown(elements, i, elements.length);
         }
@@ -54,7 +54,6 @@ public class HeapSort implements Sort {
             int temp = arr[i];
             arr[i] = arr[largest];
             arr[largest] = temp;
-
             i = largest;
         }
     }

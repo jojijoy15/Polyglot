@@ -1,4 +1,4 @@
-package com.problems.learning.algo.string;
+package com.problems.learning.algo.string.subsequence;
 
 import java.util.Arrays;
 

@@ -215,7 +215,7 @@ public class StreamsProblems {
           for (Integer val : e1.getValue()) {
             long count = e1.getKey();
             while (count-- > 0) {
-                  consumer.accept(val);
+                consumer.accept(val);
             }
           }
         })
@@ -224,13 +224,13 @@ public class StreamsProblems {
 
   public List<OrderItem> findMostPurchasedOrderItems(List<OrderItem> items) {
     Map<Integer, List<OrderItem>> groupedItems = items.stream()
-        .collect(Collectors.groupingBy(item -> item.getQuantityPurchased(), Collectors.toList()));
+        .collect(Collectors.groupingBy(OrderItem::getQuantityPurchased, Collectors.toList()));
     Map.Entry<Integer, List<OrderItem>> entrySet = groupedItems.entrySet().stream()
         .max(Map.Entry.comparingByKey()).get();
     return entrySet.getValue();
   }
 
-  public Double calculateAverageMarks(String[][] studentsMark) {
+  public Double calculateAverageMarks(String[][] studentsMark, Comparator<? super Entry<String, Double>> comparator) {
 
       Map<String, Double> averages = Arrays.stream(studentsMark)
               .map(e -> Map.entry(e[0], Integer.parseInt(e[1])))
@@ -238,8 +238,13 @@ public class StreamsProblems {
               .entrySet()
               .stream()
               .map(e -> Map.entry(e.getKey(), Math.floor(e.getValue())))
-              .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 + e2 / 2, LinkedHashMap::new));
+              .sorted(comparator)
+              .collect(Collectors.toMap(
+                      Map.Entry::getKey,
+                      Map.Entry::getValue,
+                      (e1, e2) -> e1 + e2 / 2,
+                      LinkedHashMap::new)
+              );
        return averages.values().toArray(Double[]::new)[0];
   }
 

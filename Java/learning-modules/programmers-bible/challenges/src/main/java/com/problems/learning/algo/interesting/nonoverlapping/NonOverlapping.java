@@ -39,8 +39,6 @@ public class NonOverlapping {
             intervalBoundaries.add(offer.getStartTime());
             intervalBoundaries.add(offer.getEndTime());
         }
-
-
         return 0;
     }
 

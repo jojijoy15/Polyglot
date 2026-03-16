@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-class MonotonicStacksTest {
+class NextGreatestElementsTest {
 
-    MonotonicStacks ms = new MonotonicStacks();
+    NextGreatestElements ms = new NextGreatestElements();
 
     @Test
     void nextGreatestElements() {

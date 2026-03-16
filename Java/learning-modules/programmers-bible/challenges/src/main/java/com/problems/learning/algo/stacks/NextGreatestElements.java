@@ -2,7 +2,7 @@ package com.problems.learning.algo.stacks;
 
 import java.util.Stack;
 
-public class MonotonicStacks {
+public class NextGreatestElements {
 
     /*
         Create a new array by replacing each integer value with next
@@ -12,16 +12,11 @@ public class MonotonicStacks {
         O/p : [10, -1, 8, -1, -1]
      */
     public int[] nextGreatestElements(int[] arr) {
-
-        if (arr == null || arr.length == 0) {
-            return new int[0];
-        }
-
         Stack<Integer> stack = new Stack<>();
         stack.push(0);
         for(int i = 1; i < arr.length; i++){
-            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) {
-                arr[stack.peek()]= arr[i];
+            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) { //Monotonic Decreasing Stack
+                arr[stack.peek()] = arr[i];
                 stack.pop();
             }
             stack.push(i);

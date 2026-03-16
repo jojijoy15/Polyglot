@@ -1,9 +1,6 @@
 package com.problems.learning.algo.string;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class UniqueSequence {
 
@@ -18,7 +15,7 @@ public class UniqueSequence {
             } else {
                 maxLength = Math.max(maxLength, unique.size());
                 unique.clear();
-                count--; //This character may be part
+                unique.add(characters[count]);
             }
         }
         return Math.max(maxLength, 0) ;
@@ -26,33 +23,22 @@ public class UniqueSequence {
 
     //Find the longest unique substring from a given String.
     public String uniqueString(String s) {
-        char[] characters = s.toCharArray();
-        HashSet<Character> unique = new HashSet<>();
-        int left = 0, right = 0;
-        List<Map.Entry<Integer, Integer>> indexTracker = new ArrayList<>();
-        for (int count = 0; count < characters.length; count++) {
-            if(unique.add(characters[count])) {
-                right++;
-            } else {
-                indexTracker.add(Map.entry(left, right));
-                left = right;
-                count--;
-                unique.clear();
+        Map<Character, Integer> lastSeen = new HashMap<>();
+        int left = 0, maxStart = 0, maxLength = 0;
+        for (int right = 0; right < s.length(); right++) {
+            char current = s.charAt(right);
+
+            if (lastSeen.containsKey(current) && lastSeen.get(current) >= left) {
+                left = lastSeen.get(current) + 1;
+            }
+
+            lastSeen.put(current, right);
+
+            if (right - left + 1 > maxLength) {
+                maxLength = right - left + 1;
+                maxStart = left;
             }
         }
-        left = 0; right = 0;
-        int maxLength = Integer.MIN_VALUE;
-        for(int count = 0; count < indexTracker.size(); count++) {
-            Map.Entry<Integer, Integer> entry = indexTracker.get(count);
-            int beginning = entry.getKey();
-            int end = entry.getValue();
-            int subLength = end - beginning;
-            maxLength = Math.max(maxLength, subLength);
-            if(maxLength == subLength) {
-                left = beginning;
-                right = end;
-            }
-        }
-        return maxLength == Integer.MIN_VALUE ? "" : s.substring(left, right);
+        return s.substring(maxStart, maxStart + maxLength);
     }
 }
