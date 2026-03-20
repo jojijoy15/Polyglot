@@ -1,0 +1,59 @@
+package com.problems.learning.ds.trees.problems;
+
+import com.problems.learning.ds.trees.traversal.dfs.PreOrderTraversal;
+import com.problems.learning.ds.trees.model.TreeNode;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class BinaryTreeOperationsTest {
+
+    BinaryTreeOperations binaryTreeOperations = new BinaryTreeOperations();
+
+    @Test
+    void invert() {
+        /*
+                  1
+               /    \
+              2      3
+             / \   /  \
+            4   5  6   7
+           /
+          8
+          Preorder : 1, 2, 4, 8, 5, 3, 6, 7
+        */
+        TreeNode<Integer> tree = createTree();
+        PreOrderTraversal preOrderTraversal = new PreOrderTraversal();
+        assertThat(preOrderTraversal.traverse(tree))
+                .containsExactly(1, 2, 4, 8, 5, 3, 6, 7);
+        TreeNode<Integer> invertedTree = binaryTreeOperations.invert(tree);
+         /*
+                 1
+               /    \
+              3      2
+             / \   /  \
+            7   6 5    4
+                        \
+                         8
+          Preorder : 1, 3, 7, 6, 2, 5, 4, 8
+        */
+        assertThat(preOrderTraversal.traverse(invertedTree))
+                .containsExactly(1, 3, 7, 6, 2, 5, 4, 8);
+
+    }
+
+    private TreeNode<Integer> createTree() {
+
+        TreeNode<Integer> leaf1 = new TreeNode<>(8, null, null);
+        TreeNode<Integer> leaf2 = new TreeNode<>(6, null, null);
+        TreeNode<Integer> leaf3 = new TreeNode<>(7, null, null);
+        TreeNode<Integer> leaf4 = new TreeNode<>(5, null, null);
+
+        TreeNode<Integer> i3 = new TreeNode<>(4, leaf1, null);
+        TreeNode<Integer> i1 = new TreeNode<>(2, i3, leaf4);
+        TreeNode<Integer> i2 = new TreeNode<>(3, leaf2, leaf3);
+
+        TreeNode<Integer> root = new TreeNode<>(1, i1, i2);
+        return root;
+    }
+}

@@ -21,7 +21,7 @@ public class SlidingWindow {
 
     public static int[] maxSlidingWindowOptimized(int[] nums, int k) {
         int n = nums.length;
-        int totalWindows = (n - k) + 1;       // your formula!
+        int totalWindows = (n - k) + 1;
         int[] result = new int[totalWindows];
         Deque<Integer> deque = new ArrayDeque<>(); // stores indices
 

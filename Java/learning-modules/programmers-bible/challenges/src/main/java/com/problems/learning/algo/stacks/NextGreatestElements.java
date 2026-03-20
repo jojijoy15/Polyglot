@@ -15,7 +15,7 @@ public class NextGreatestElements {
         Stack<Integer> stack = new Stack<>();
         stack.push(0);
         for(int i = 1; i < arr.length; i++){
-            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) { //Monotonic Decreasing Stack
+            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) { //Monotonic Decreasing Stack <
                 arr[stack.peek()] = arr[i];
                 stack.pop();
             }
