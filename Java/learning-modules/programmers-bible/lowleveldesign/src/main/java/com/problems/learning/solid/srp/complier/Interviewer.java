@@ -1,8 +1,6 @@
 package com.problems.learning.solid.srp.complier;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 //Good design
 public class Interviewer {

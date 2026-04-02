@@ -11,11 +11,12 @@ public class NextGreatestElements {
         I/p : [5, 10, 6, 8, 6]
         O/p : [10, -1, 8, -1, -1]
      */
+    //TODO cacluate distance
     public int[] nextGreatestElements(int[] arr) {
         Stack<Integer> stack = new Stack<>();
         stack.push(0);
         for(int i = 1; i < arr.length; i++){
-            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) { //Monotonic Decreasing Stack <
+            while(!stack.isEmpty() && arr[stack.peek()] <= arr[i]) { //Note: Monotonic Decreasing Stack
                 arr[stack.peek()] = arr[i];
                 stack.pop();
             }

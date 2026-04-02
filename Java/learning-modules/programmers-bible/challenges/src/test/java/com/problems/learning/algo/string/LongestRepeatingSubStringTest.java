@@ -20,4 +20,15 @@ class LongestRepeatingSubStringTest {
         String longestRepeatingPattern = input.substring(start, start + length);
         assertThat(longestRepeatingPattern).isEqualTo("bbb");
     }
+
+    @Test
+    void findLongestRepeatingCharacterSame() {
+        String input = "aabbbccccd";
+        Map.Entry<Integer, Integer> longRepeatingSeq = longestRepeatingSubString
+                .findLongestRepeatingCharacter(input);
+        int start = longRepeatingSeq.getKey();
+        int length = longRepeatingSeq.getValue();
+        String longestRepeatingPattern = input.substring(start, start + length);
+        assertThat(longestRepeatingPattern).isEqualTo("cccc");
+    }
 }

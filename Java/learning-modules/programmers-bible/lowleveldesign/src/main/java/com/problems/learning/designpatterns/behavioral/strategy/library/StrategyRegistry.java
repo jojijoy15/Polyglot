@@ -8,7 +8,6 @@ import com.problems.learning.designpatterns.behavioral.strategy.library.impl.sim
 import com.problems.learning.designpatterns.behavioral.strategy.library.impl.simple.SortByPrice;
 import com.problems.learning.designpatterns.behavioral.strategy.library.impl.simple.SortByQuantity;
 
-
 import java.util.*;
 
 public class StrategyRegistry {

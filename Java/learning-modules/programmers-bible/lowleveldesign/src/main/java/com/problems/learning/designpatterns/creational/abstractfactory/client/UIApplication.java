@@ -3,7 +3,6 @@ package com.problems.learning.designpatterns.creational.abstractfactory.client;
 import com.problems.learning.designpatterns.creational.abstractfactory.components.buttons.Button;
 import com.problems.learning.designpatterns.creational.abstractfactory.components.buttons.mac.MacClickHandler;
 import com.problems.learning.designpatterns.creational.abstractfactory.components.scroll.Scroller;
-import com.problems.learning.designpatterns.creational.abstractfactory.components.scroll.windows.WindowsSimpleScroller;
 import com.problems.learning.designpatterns.creational.abstractfactory.factories.MacUIFactory;
 import com.problems.learning.designpatterns.creational.abstractfactory.factories.UIFactory;
 

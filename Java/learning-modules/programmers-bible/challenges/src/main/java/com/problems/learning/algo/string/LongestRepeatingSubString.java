@@ -9,14 +9,14 @@ public class LongestRepeatingSubString {
         int left = 0;
         int maxLength = 0;
         int maxLengthBegIndex = 0;
-        for(int i = 1; i < charArray.length; i++){
-            if(charArray[i] != charArray[i-1] || i == charArray.length-1){
-                int length = i - left;
+        for(int right = 1; right < charArray.length; right++){
+            if(charArray[right] != charArray[right-1] || right == charArray.length-1){
+                int length = right - left;
                 if(maxLength < length){
                      maxLength = length;
                      maxLengthBegIndex = left;
                 }
-                left = i;
+                left = right;
             }
         }
         return Map.entry(maxLengthBegIndex, maxLength);

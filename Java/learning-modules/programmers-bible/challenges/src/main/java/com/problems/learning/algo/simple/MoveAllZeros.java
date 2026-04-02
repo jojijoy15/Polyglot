@@ -2,6 +2,7 @@ package com.problems.learning.algo.simple;
 
 public class MoveAllZeros {
 
+    //TODO update with 2 pointer
     public int[] moveZeroesToFront(int[] elements) {
         int sum = 0;
         for(int element : elements){

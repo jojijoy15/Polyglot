@@ -9,44 +9,44 @@ class UniqueSequenceTest {
     UniqueSequence uniqueSequence = new UniqueSequence();
 
     @Test
-    void uniqueStringLengthValidCaseOddLength() {
+    void longestLongestUniqueStringLengthValidCaseOddLength() {
         String input = "abcdabb";
-        int maxLength = uniqueSequence.uniqueStringLength(input);
+        int maxLength = uniqueSequence.longestUniqueStringLength(input);
         assertThat(maxLength).isEqualTo(4);
     }
 
     @Test
-    void uniqueStringLengthWhenEmpty() {
+    void longestLongestUniqueStringLengthWhenEmpty() {
         String input = "";
-        int maxLength = uniqueSequence.uniqueStringLength(input);
+        int maxLength = uniqueSequence.longestUniqueStringLength(input);
         assertThat(maxLength).isEqualTo(0);
     }
 
     @Test
-    void uniqueStringLengthValidCaseEvenLength() {
+    void longestLongestUniqueStringLengthValidCaseEvenLength() {
         String input = "abcdabbefhgf";
-        int maxLength = uniqueSequence.uniqueStringLength(input);
+        int maxLength = uniqueSequence.longestUniqueStringLength(input);
         assertThat(maxLength).isEqualTo(5);
     }
 
     @Test
-    void uniqueStringValidCaseOddLength() {
+    void longestUniqueStringValidCaseOddLength() {
         String input = "abcdabb";
-        String uniqueString =uniqueSequence.uniqueString(input);
+        String uniqueString =uniqueSequence.longestUniqueString(input);
         assertThat(uniqueString).isEqualTo("abcd");
     }
 
     @Test
-    void uniqueStringWhenEmpty() {
+    void longestUniqueStringWhenEmpty() {
         String input = "";
-        String uniqueString = uniqueSequence.uniqueString(input);
+        String uniqueString = uniqueSequence.longestUniqueString(input);
         assertThat(uniqueString).isEqualTo("");
     }
 
     @Test
-    void uniqueStringValidCaseEvenLength() {
+    void longestUniqueStringValidCaseEvenLength() {
         String input = "abcdabbefhgf";
-        String uniqueString = uniqueSequence.uniqueString(input);
+        String uniqueString = uniqueSequence.longestUniqueString(input);
         assertThat(uniqueString).isEqualTo("befhg");
     }
 }

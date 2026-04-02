@@ -1,6 +1,5 @@
 package com.problems.learning.solid.ocp.complier.vehicles;
 
-import com.problems.learning.solid.ocp.complier.vehicles.VehicleType;
 import com.problems.learning.solid.ocp.complier.Slot;
 
 import java.time.Duration;

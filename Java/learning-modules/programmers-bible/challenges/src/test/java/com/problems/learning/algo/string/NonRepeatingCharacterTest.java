@@ -14,4 +14,10 @@ class NonRepeatingCharacterTest {
         Character uniqueCharacter = nr.findNonRepeatingCharacter("abaccd");
         assertThat(uniqueCharacter).isEqualTo('b');
     }
+
+    @Test
+    void findNonRepeatingCharacterapple() {
+        Character uniqueCharacter = nr.findNonRepeatingCharacter("apple");
+        assertThat(uniqueCharacter).isEqualTo('a');
+    }
 }
