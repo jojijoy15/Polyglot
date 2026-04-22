@@ -14,7 +14,7 @@ public class ReminderNotification extends Notification {
     @Override
     public void notify(String recipient, String message) {
         String subject = "Reminder — Due: " + dueDate;
-        String body    = "Just a friendly reminder: " + message;
+        String body = "Just a friendly reminder: " + message;
         channel.send(recipient, subject, body);
     }
 }

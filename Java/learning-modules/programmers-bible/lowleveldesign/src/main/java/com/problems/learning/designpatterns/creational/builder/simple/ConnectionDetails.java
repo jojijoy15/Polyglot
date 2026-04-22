@@ -1,5 +1,8 @@
 package com.problems.learning.designpatterns.creational.builder.simple;
 
+import lombok.ToString;
+
+@ToString
 public class ConnectionDetails {
 
     private String userName;

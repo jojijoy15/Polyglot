@@ -14,7 +14,7 @@ public class PromotionNotification extends Notification {
     @Override
     public void notify(String recipient, String message) {
         String subject = "Special Offer Just For You!";
-        String body    = message + " Use code: " + discountCode;
+        String body = message + " Use code: " + discountCode;
         channel.send(recipient, subject, body);
     }
 }

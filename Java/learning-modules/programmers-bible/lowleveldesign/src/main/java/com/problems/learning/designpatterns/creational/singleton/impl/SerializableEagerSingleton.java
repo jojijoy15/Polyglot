@@ -15,7 +15,8 @@ public class SerializableEagerSingleton implements Serializable {
 
     private static final SerializableEagerSingleton instance = new SerializableEagerSingleton();
 
-    private SerializableEagerSingleton() {}
+    private SerializableEagerSingleton() {
+    }
 
     public static SerializableEagerSingleton getInstance() {
         return instance;

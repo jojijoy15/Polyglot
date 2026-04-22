@@ -20,7 +20,8 @@ public class ReflectionAttack implements FakeSingletonDetectorAttack {
             EnumSingleton secondInstance = (EnumSingleton) constructor.newInstance();
             logger.info("Reflection Attack :: Are both instances same? : "
                     + (firstInstance == secondInstance));
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException |
+                 NoSuchMethodException e) {
             logger.severe(e.getMessage());
             throw new RuntimeException(e.getCause());
         }

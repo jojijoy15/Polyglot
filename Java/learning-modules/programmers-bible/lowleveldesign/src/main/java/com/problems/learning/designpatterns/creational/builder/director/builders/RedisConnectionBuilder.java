@@ -21,8 +21,8 @@ public class RedisConnectionBuilder implements ConnectionBuilder {
     @Override
     public ConnectionBuilder setConnectionOptions() {
         builder.dbIndex(1)
-               .useSsl(true)
-               .commandTimeoutMs(500);
+                .useSsl(true)
+                .commandTimeoutMs(500);
         return this;
     }
 

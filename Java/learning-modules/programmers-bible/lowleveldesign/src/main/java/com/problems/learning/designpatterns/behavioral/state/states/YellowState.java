@@ -1,8 +1,5 @@
 package com.problems.learning.designpatterns.behavioral.state.states;
 
-import com.problems.learning.designpatterns.behavioral.state.machine.TrafficLight;
-import com.sun.source.tree.BreakTree;
-
 public class YellowState implements TrafficLightState {
 
     // Tracks which direction Yellow is bridging
@@ -31,12 +28,14 @@ public class YellowState implements TrafficLightState {
         // Yellow decides next state based on direction it came from
         return switch (direction) {
             case TO_GREEN -> new GreenState();   // Red → Yellow → Green
-            case TO_RED   -> new RedState();     // Green → Yellow → Red
+            case TO_RED -> new RedState();     // Green → Yellow → Red
         };
     }
 
     @Override
-    public int getDurationSeconds() { return 5; }
+    public int getDurationSeconds() {
+        return 5;
+    }
 
     @Override
     public String getStateName() {

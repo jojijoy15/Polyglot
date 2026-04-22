@@ -16,9 +16,9 @@ public class Client {
     static NotificationService resolveService(String channel) {
         return switch (channel) {
             case "EMAIL" -> new EmailNotificationService();
-            case "SMS"   -> new SmsNotificationService();
-            case "PUSH"  -> new PushNotificationService();
-            default      -> throw new IllegalArgumentException("Unknown channel: " + channel);
+            case "SMS" -> new SmsNotificationService();
+            case "PUSH" -> new PushNotificationService();
+            default -> throw new IllegalArgumentException("Unknown channel: " + channel);
         };
     }
 }

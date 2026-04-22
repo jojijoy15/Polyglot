@@ -5,8 +5,9 @@ import com.launchdarkly.eventsource.EventSource.Builder;
 import com.launchdarkly.eventsource.HttpConnectStrategy;
 import com.launchdarkly.eventsource.background.BackgroundEventHandler;
 import com.launchdarkly.eventsource.background.BackgroundEventSource;
-import java.net.URI;
 import okhttp3.Headers;
+
+import java.net.URI;
 
 public class WikiMediaEventSource {
 

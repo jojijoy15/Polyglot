@@ -1,0 +1,6 @@
+{"id":"P01","product":"Laptop","price":"1200.00","stock":"45"}
+{"id":"P02","product":"Monitor","price":"350.00","stock":"120"}
+{"id":"P03","product":"","price":"89.99","stock":"200"}
+{"id":"P04","product":"Keyboard","price":"-15.00","stock":"300"}
+{"id":"P05","product":"Mouse","price":"45.00","stock":"0"}
+{{

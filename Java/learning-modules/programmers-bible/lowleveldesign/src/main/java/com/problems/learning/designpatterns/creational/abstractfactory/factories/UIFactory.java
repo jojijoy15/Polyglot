@@ -6,5 +6,6 @@ import com.problems.learning.designpatterns.creational.abstractfactory.component
 public interface UIFactory {
 
     Button createButton();
+
     Scroller createScroller();
 }

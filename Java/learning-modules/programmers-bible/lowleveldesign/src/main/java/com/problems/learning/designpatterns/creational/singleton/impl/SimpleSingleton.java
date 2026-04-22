@@ -13,9 +13,10 @@ public class SimpleSingleton {
 
     private static final Logger logger = Logger.getLogger(SimpleSingleton.class.getName());
 
-    private static SimpleSingleton instance ;
+    private static SimpleSingleton instance;
 
-    private SimpleSingleton() {}
+    private SimpleSingleton() {
+    }
 
     public static SimpleSingleton getInstance() /*throws InterruptedException*/ {
         if (instance == null) {

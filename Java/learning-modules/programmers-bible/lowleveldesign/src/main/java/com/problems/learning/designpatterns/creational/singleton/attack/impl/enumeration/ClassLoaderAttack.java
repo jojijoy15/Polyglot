@@ -30,7 +30,7 @@ public class ClassLoaderAttack implements FakeSingletonDetectorAttack {
             Method anotherClassLoaderdeclaredMethod = anotherClass.getDeclaredMethod("getInstance");
             Object newSingleInstance = anotherClassLoaderdeclaredMethod.invoke(anotherClass);
             logger.info("ClassLoader Attack :: Are both instances loaded via Existing class loader same? : "
-                    +  (newSingleInstance == firstInstance));
+                    + (newSingleInstance == firstInstance));
         } catch (ClassNotFoundException | NoSuchMethodException e) {
             e.printStackTrace(); // Just for demo
         } catch (InvocationTargetException e) {

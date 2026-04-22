@@ -4,7 +4,7 @@ import com.problems.learning.designpatterns.creational.abstractfactory.component
 import com.problems.learning.designpatterns.creational.abstractfactory.components.scroll.Scroller;
 
 public class MacSimpleScroller implements Scroller {
-    
+
 
     @Override
     public void scrollUp(ScrollHandler scrollHandler) {

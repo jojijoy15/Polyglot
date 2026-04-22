@@ -21,8 +21,8 @@ public class PostgresConnectionBuilder implements ConnectionBuilder {
     @Override
     public ConnectionBuilder setConnectionOptions() {
         builder.database("orders_db")
-               .maxPoolSize(20)
-               .connectionTimeoutMs(3000);
+                .maxPoolSize(20)
+                .connectionTimeoutMs(3000);
         return this;
     }
 

@@ -16,11 +16,12 @@ public class SingleLockSingleton {
     private static final Logger logger = Logger.getLogger(SingleLockSingleton.class.getName());
     private static SingleLockSingleton instance;
 
-    private SingleLockSingleton() {}
+    private SingleLockSingleton() {
+    }
 
     public static SingleLockSingleton getInstance() {
         logger.info("Retrieving a new instance of SingleLockSingleton");
-        if(instance == null) {
+        if (instance == null) {
             synchronized (SingleLockSingleton.class) {
                 instance = new SingleLockSingleton();
             }

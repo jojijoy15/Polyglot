@@ -8,10 +8,13 @@ public class InventoryService implements OrderObserver {
     @Override
     public void onOrderEvent(OrderEvent event) {
         switch (event.getStatus()) {
-            case CONFIRMED  -> System.out.println("[Inventory] Reserving stock for order " + event.getOrderId());
-            case SHIPPED    -> System.out.println("[Inventory] Deducting stock — order " + event.getOrderId() + " dispatched");
-            case CANCELLED  -> System.out.println("[Inventory] Releasing reserved stock for order " + event.getOrderId());
-            default         -> {} // No action for other states
+            case CONFIRMED -> System.out.println("[Inventory] Reserving stock for order " + event.getOrderId());
+            case SHIPPED ->
+                    System.out.println("[Inventory] Deducting stock — order " + event.getOrderId() + " dispatched");
+            case CANCELLED ->
+                    System.out.println("[Inventory] Releasing reserved stock for order " + event.getOrderId());
+            default -> {
+            } // No action for other states
         }
     }
 }

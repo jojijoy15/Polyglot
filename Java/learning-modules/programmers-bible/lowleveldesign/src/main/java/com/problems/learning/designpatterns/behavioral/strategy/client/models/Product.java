@@ -42,7 +42,7 @@ public class Product implements Comparable<Product> {
 
     @Override
     public int compareTo(Product o) {
-        if( name != null && o.name != null)
+        if (name != null && o.name != null)
             return name.compareTo(o.name);
         else
             return -1; // null for either

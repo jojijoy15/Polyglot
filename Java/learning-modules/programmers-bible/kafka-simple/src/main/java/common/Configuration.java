@@ -1,14 +1,13 @@
 package common;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Properties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Configuration {
 

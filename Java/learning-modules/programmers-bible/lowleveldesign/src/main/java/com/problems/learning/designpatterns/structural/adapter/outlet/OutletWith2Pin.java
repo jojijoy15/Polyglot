@@ -7,7 +7,7 @@ public class OutletWith2Pin implements Outlet {
     private int numberOfPins;
     private TwoPinCharger charger;
 
-    public  OutletWith2Pin(TwoPinCharger charger) {
+    public OutletWith2Pin(TwoPinCharger charger) {
         this.numberOfPins = 2;
         this.charger = charger;
     }

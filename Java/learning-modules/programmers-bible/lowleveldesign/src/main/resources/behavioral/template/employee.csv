@@ -1,0 +1,6 @@
+1001,Alice,Engineering,95000,
+1002,Bob,Marketing,72000,
+CORRUPTED_ROW,
+1003,Charlie,Engineering,88000,
+1004,,Sales,61000,
+1005,Diana,HR,67000

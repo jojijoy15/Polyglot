@@ -28,6 +28,6 @@ public class FeatureFlagCheckerClient {
 
         FeatureFlag feature2 = FeatureFlagFactory.getFeature("NEW_CHECKOUT", 30);
 
-        System.out.println(flags.get(0) == feature2);
+        System.out.println("Same Feature flag : " + (flags.get(0) == feature2));
     }
 }

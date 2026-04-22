@@ -17,13 +17,13 @@ public class SerializationAttack implements FakeSingletonDetectorAttack {
         writeObject(singleton);
         EnumSingleton anotherInstance = readObject();
         logger.info("Serialization Attack :: Are both instances same? : "
-            +  (singleton == anotherInstance));
+                + (singleton == anotherInstance));
     }
 
     private void writeObject(Object object) {
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("target\\binary.ser"))) {
             os.writeObject(object);
-        } catch(IOException exception) {
+        } catch (IOException exception) {
             logger.severe(exception.getMessage());
         }
     }
@@ -31,7 +31,7 @@ public class SerializationAttack implements FakeSingletonDetectorAttack {
     private EnumSingleton readObject() {
         try (ObjectInputStream os = new ObjectInputStream(new FileInputStream("target\\binary.ser"))) {
             return (EnumSingleton) os.readObject();
-        } catch(IOException | ClassNotFoundException ex) {
+        } catch (IOException | ClassNotFoundException ex) {
             logger.setLevel(Level.SEVERE);
             logger.severe(ex.getMessage());
         }

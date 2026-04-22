@@ -21,8 +21,8 @@ public class KafkaConnectionBuilder implements ConnectionBuilder {
     @Override
     public ConnectionBuilder setConnectionOptions() {
         builder.groupId("payment-service-group")
-               .securityProtocol("SASL_SSL")
-               .retries(5);
+                .securityProtocol("SASL_SSL")
+                .retries(5);
         return this;
     }
 

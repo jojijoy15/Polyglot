@@ -12,7 +12,7 @@ public class AlertNotification extends Notification {
     public void notify(String recipient, String message) {
         // Alerts are urgent — format accordingly
         String subject = "🚨 URGENT ALERT";
-        String body    = "[ACTION REQUIRED] " + message;
+        String body = "[ACTION REQUIRED] " + message;
         channel.send(recipient, subject, body);
     }
 }

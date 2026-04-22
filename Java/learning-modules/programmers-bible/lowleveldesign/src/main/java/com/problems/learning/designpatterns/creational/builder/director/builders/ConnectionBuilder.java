@@ -4,7 +4,10 @@ import com.problems.learning.designpatterns.creational.builder.director.Connecti
 
 public interface ConnectionBuilder {
     ConnectionBuilder setCredentials(String username, String password);
+
     ConnectionBuilder setEndpoint(String host, int port);
+
     ConnectionBuilder setConnectionOptions();   // type-specific options
+
     ConnectionDetails build();
 }

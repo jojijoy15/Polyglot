@@ -32,7 +32,7 @@ public class NotificationSystem {
 
         // Reminder via Push
         Notification reminder = new ReminderNotification(
-            new PushChannel(), "2025-08-01"
+                new PushChannel(), "2025-08-01"
         );
         reminder.notify("device-token-xyz-123", "Submit your timesheet");
 
@@ -40,7 +40,7 @@ public class NotificationSystem {
 
         // Promotion via Email
         Notification promo = new PromotionNotification(
-            new EmailChannel(), "SAVE30"
+                new EmailChannel(), "SAVE30"
         );
         promo.notify("joji@company.com", "Get 30% off on all courses this week!");
 

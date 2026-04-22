@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>Problems</module>
+        <module>lang-fundamentals</module>
         <module>kafka-simple</module>
         <module>kafka-realtime-producer</module>
         <module>lowleveldesign</module>

@@ -12,14 +12,25 @@ public class OrderEvent {
     }
 
     public OrderEvent(String orderId, OrderStatus status, double totalAmount, String customerId) {
-        this.orderId    = orderId;
-        this.status     = status;
+        this.orderId = orderId;
+        this.status = status;
         this.totalAmount = totalAmount;
         this.customerId = customerId;
     }
 
-    public String getOrderId()      { return orderId; }
-    public OrderStatus getStatus()  { return status; }
-    public double getTotalAmount()  { return totalAmount; }
-    public String getCustomerId()   { return customerId; }
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+
+    public double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public String getCustomerId() {
+        return customerId;
+    }
 }

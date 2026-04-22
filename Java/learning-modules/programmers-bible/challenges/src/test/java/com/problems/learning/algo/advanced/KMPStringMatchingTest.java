@@ -1,6 +1,6 @@
 package com.problems.learning.algo.advanced;
 
-import com.problems.learning.algo.advanced.stringmatching.KMPStringMatching;
+import com.problems.learning.algo.advanced.string.matching.KMPStringMatching;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

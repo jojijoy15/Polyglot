@@ -8,10 +8,11 @@ public class InvoiceService implements OrderObserver {
     @Override
     public void onOrderEvent(OrderEvent event) {
         switch (event.getStatus()) {
-            case CONFIRMED  -> System.out.printf("[Invoice]   Generating invoice for order %s — $%.2f%n",
-                                    event.getOrderId(), event.getTotalAmount());
-            case CANCELLED  -> System.out.println("[Invoice]   Issuing refund for order " + event.getOrderId());
-            default         -> {}
+            case CONFIRMED -> System.out.printf("[Invoice]   Generating invoice for order %s — $%.2f%n",
+                    event.getOrderId(), event.getTotalAmount());
+            case CANCELLED -> System.out.println("[Invoice]   Issuing refund for order " + event.getOrderId());
+            default -> {
+            }
         }
     }
 }

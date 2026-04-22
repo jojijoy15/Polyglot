@@ -1,7 +1,5 @@
 package com.problems.learning.designpatterns.behavioral.state.states;
 
-import com.problems.learning.designpatterns.behavioral.state.machine.TrafficLight;
-
 public class RedState implements TrafficLightState {
 
     @Override
@@ -16,8 +14,12 @@ public class RedState implements TrafficLightState {
     }
 
     @Override
-    public int getDurationSeconds() { return 30; }
+    public int getDurationSeconds() {
+        return 30;
+    }
 
     @Override
-    public String getStateName() { return "RED"; }
+    public String getStateName() {
+        return "RED";
+    }
 }

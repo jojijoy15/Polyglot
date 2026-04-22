@@ -2,13 +2,14 @@ package org.kafka.sample.playground.producer;
 
 import com.launchdarkly.eventsource.background.BackgroundEventHandler;
 import com.launchdarkly.eventsource.background.BackgroundEventSource;
-import java.util.Properties;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.kafka.sample.playground.common.Configuration;
 import org.kafka.sample.playground.eventsource.WikiMediaEventHandler;
 import org.kafka.sample.playground.eventsource.WikiMediaEventSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Properties;
 
 public class RealtimeProducer {
 

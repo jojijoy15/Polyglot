@@ -34,13 +34,13 @@ public class ConcurrencyAttack implements FakeSingletonDetectorAttack {
             logger.info("Total '" + count + "' Distinct Singletons created");
 
         } catch (InterruptedException e) {
-           throw new RuntimeException(e);
-       } finally {
+            throw new RuntimeException(e);
+        } finally {
             ex.shutdownNow();
-           logger.info("Executors closed");
-       }
+            logger.info("Executors closed");
+        }
     }
-    
+
     private List<Callable<EagerSingleton>> eagerSingletonBreakTaskProvider(int nThreads) {
         return IntStream.range(0, nThreads)
                 .<Callable<EagerSingleton>>mapToObj(e -> EagerSingleton::getInstance)

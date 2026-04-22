@@ -17,7 +17,7 @@ public class TokenFactory {
 
     //Violates OCP
     public Token createToken(TokenType tokenType) {
-        return switch(tokenType) {
+        return switch (tokenType) {
             case CLIENT_TOKEN -> new ClientToken(LocalDateTime.now().toString(), "client", "openid, profile");
             case PAYMENT_TOKEN -> new PaymentToken(LocalDateTime.now().toString(), "client", "android");
         };

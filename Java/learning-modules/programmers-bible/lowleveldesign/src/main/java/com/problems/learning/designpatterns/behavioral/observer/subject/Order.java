@@ -15,14 +15,19 @@ public class Order {
     private final List<OrderObserver> observers = new ArrayList<>();
 
     public Order(String orderId, String customerId, double totalAmount) {
-        this.orderId     = orderId;
-        this.customerId  = customerId;
+        this.orderId = orderId;
+        this.customerId = customerId;
         this.totalAmount = totalAmount;
-        this.status      = OrderEvent.OrderStatus.PLACED;
+        this.status = OrderEvent.OrderStatus.PLACED;
     }
 
-    public void addObserver(OrderObserver observer)    { observers.add(observer); }
-    public void removeObserver(OrderObserver observer) { observers.remove(observer); }
+    public void addObserver(OrderObserver observer) {
+        observers.add(observer);
+    }
+
+    public void removeObserver(OrderObserver observer) {
+        observers.remove(observer);
+    }
 
     // Core: transition state and notify all observers
     public void updateStatus(OrderEvent.OrderStatus newStatus) {

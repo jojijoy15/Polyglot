@@ -11,7 +11,7 @@ public class ClassLoaderAttack implements FakeSingletonDetectorAttack {
 
     private static final Logger logger = Logger.getLogger(ClassLoaderAttack.class.getName());
     private static final String classPath = "C:\\SourceCode\\Learning\\Java\\Language\\fundamentals\\target\\classes";
-    public static final String fqcn = "org.practice.designpatterns.creational.singleton.impl.EagerSingleton";
+    public static final String fqcn = "com.problems.learning.designpatterns.creational.singleton.impl.EagerSingleton";
 
     @Override
     public void breakSingleton() {
@@ -24,7 +24,7 @@ public class ClassLoaderAttack implements FakeSingletonDetectorAttack {
             logger.info("ClassLoader Attack :: Are both instances loaded via custom class loader same? : "
                     + (firstInstance == secondInstance));
 
-            //Second Class Loader
+            //Second Class Loaders
             ClassLoader anotherClassLoader = new CustomClassLoader(classPath);
             Class<?> anotherClass = anotherClassLoader.loadClass(fqcn);
             Method anotherClassLoaderdeclaredMethod = anotherClass.getDeclaredMethod("getInstance");

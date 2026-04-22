@@ -9,7 +9,7 @@ public class SortByDiscount implements SortStrategy<Product> {
 
     @Override
     public Comparator<Product> sortComparator() {
-        return  (a, b) -> a.getDiscount() > b.getDiscount()
+        return (a, b) -> a.getDiscount() > b.getDiscount()
                 ? 1 : a.getDiscount() == b.getDiscount()
                 ? 0 : -1;
     }
