@@ -1,7 +1,7 @@
 package com.problems.learning.ds.trees.problems;
 
-import com.problems.learning.ds.trees.traversal.dfs.PreOrderTraversal;
 import com.problems.learning.ds.trees.model.TreeNode;
+import com.problems.learning.ds.trees.traversal.dfs.PreOrderTraversal;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

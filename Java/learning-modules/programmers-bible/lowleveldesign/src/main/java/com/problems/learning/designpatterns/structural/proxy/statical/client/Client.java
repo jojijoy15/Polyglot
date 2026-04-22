@@ -1,9 +1,9 @@
 package com.problems.learning.designpatterns.structural.proxy.statical.client;
 
-import com.problems.learning.designpatterns.structural.proxy.statical.user.UserContext;
 import com.problems.learning.designpatterns.structural.proxy.statical.document.DocumentService;
 import com.problems.learning.designpatterns.structural.proxy.statical.document.DocumentServiceProxy;
 import com.problems.learning.designpatterns.structural.proxy.statical.document.RealDocumentService;
+import com.problems.learning.designpatterns.structural.proxy.statical.user.UserContext;
 
 public class Client {
 
