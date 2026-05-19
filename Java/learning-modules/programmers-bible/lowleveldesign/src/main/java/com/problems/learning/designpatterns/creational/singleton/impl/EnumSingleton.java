@@ -6,7 +6,7 @@ package com.problems.learning.designpatterns.creational.singleton.impl;
 
     Avoids following attacks
         1. Concurrency Attack due to java guarantees
-        2. If made serializable, cannot prevent serialization attack
+        2. Serialization attack
         3. Reflection Attack
 
 */

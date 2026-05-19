@@ -4,7 +4,7 @@ public class MedianSortedArrays {
 
     public double findMedian(int[] first, int[] second) {
         int totalLength = first.length + second.length;
-        int half = (totalLength + 1)/2;
+        int half = (totalLength + 1)/2; //ceiling
         //First is the smaller
         if(first.length > second.length){
             int[] temp = first;
@@ -14,8 +14,8 @@ public class MedianSortedArrays {
         int left = 0;
         int right = first.length; // smaller array
         while(left <= right) {
-            int i = (left + right)/2; //first partition
-            int j = half - i; //second partition
+            int i = (left + right)/2; //first partition tracker
+            int j = half - i; //second partition tracker
 
             int lowFirst = i > 0 ? first[i - 1] : Integer.MIN_VALUE;
             int highFirst = i < first.length ? first[i] : Integer.MAX_VALUE;
@@ -27,7 +27,7 @@ public class MedianSortedArrays {
                     return Math.max(lowFirst, lowSecond);
                 }
                 return (Math.max(lowFirst, lowSecond)
-                        + Math.min(highFirst, highSecond)) / 2.0 ;
+                        + Math.min(highFirst, highSecond)) / 2.0;
             } else if( lowFirst > highSecond) {
                 right = i - 1;
             } else {

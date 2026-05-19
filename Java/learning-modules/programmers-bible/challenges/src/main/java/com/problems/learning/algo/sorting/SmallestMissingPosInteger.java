@@ -1,7 +1,10 @@
 package com.problems.learning.algo.sorting;
 
+import com.problems.learning.tags.Easy;
+
 import java.util.TreeSet;
 
+@Easy
 public class SmallestMissingPosInteger {
 
     public int findMissingNumber(int[] numbers) {
@@ -23,6 +26,7 @@ public class SmallestMissingPosInteger {
     public int findMissingNumberOptimised(int[] numbers) {
         int n = numbers.length;
         for (int i = 0; i < n; i++) {
+            // Swap till the ith index has the number it should have i.e i+1
             while (numbers[i] > 0 && numbers[i] <= n && numbers[i] != numbers[numbers[i] - 1]) {
                 int correctIndex = numbers[i] - 1;
                 int temp = numbers[i];

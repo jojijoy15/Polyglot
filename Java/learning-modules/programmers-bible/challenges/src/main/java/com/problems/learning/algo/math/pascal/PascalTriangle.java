@@ -1,5 +1,8 @@
 package com.problems.learning.algo.math.pascal;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class PascalTriangle {
 
     public int nthRow(int r, int c) {

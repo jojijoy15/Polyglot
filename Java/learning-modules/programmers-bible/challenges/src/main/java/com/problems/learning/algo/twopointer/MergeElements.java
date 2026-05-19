@@ -1,5 +1,9 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Easy;
+import com.problems.learning.tags.Medium;
+
+@Easy
 public class MergeElements {
 
     //Given two sorted arrays, merge them to single sorted array.

@@ -1,5 +1,8 @@
 package com.problems.learning.algo.math.fraction;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class FractionAdder {
 
     // Euclidean algorithm: GCD(48,18) → GCD(18,12) → GCD(12,6) → GCD(6,0) = 6

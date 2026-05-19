@@ -1,5 +1,7 @@
 package com.problems.learning.algo.math;
 
+import com.problems.learning.tags.Hard;
+
 /**
  * Count Distinct Anagrams of a string s (LeetCode 2514).
  *
@@ -14,6 +16,7 @@ package com.problems.learning.algo.math;
  * Time: O(n) where n is total length of string
  * Space: O(n) for factorial precomputation
  */
+@Hard
 public class CountDistinctAnagrams {
 
     private static final long MOD = 1_000_000_007;

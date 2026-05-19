@@ -1,8 +1,12 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+@Medium
 public class GroupMinMoves {
 
     /*
@@ -18,7 +22,7 @@ public class GroupMinMoves {
                 pos.add(i);
             }
         }
-
+        System.out.println(Arrays.toString(pos.toArray()));
         int k = pos.size();
         if (k <= 1) return 0;
 
@@ -27,6 +31,7 @@ public class GroupMinMoves {
         for (int i = 0; i < k; i++) {
             normalized.add(pos.get(i) - i);
         }
+        System.out.println(Arrays.toString(normalized.toArray()));
 
         // Step 3: median
         int median = normalized.get(k / 2);

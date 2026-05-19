@@ -14,6 +14,7 @@
         <module>kafka-realtime-producer</module>
         <module>lowleveldesign</module>
         <module>challenges</module>
+        <module>java-platform-module-system</module>
     </modules>
 
     <properties>

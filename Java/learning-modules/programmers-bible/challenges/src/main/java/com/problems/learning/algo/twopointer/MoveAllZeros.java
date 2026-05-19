@@ -1,5 +1,8 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Easy;
+
+@Easy
 public class MoveAllZeros {
 
     public void moveZeroesToBack(int[] nums) {

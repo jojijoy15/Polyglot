@@ -1,8 +1,11 @@
 package com.problems.learning.algo.math.fraction;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Medium
 public class FractionToDecimal {
 
     public static String fractionToDecimal(int numerator, int denominator) {

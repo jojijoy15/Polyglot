@@ -1,9 +1,12 @@
 package com.problems.learning.algo.greedy;
 
+import com.problems.learning.tags.Hard;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+@Hard
 public class MaxMatchingCondition {
 
     public int maxMatches(int[] arr) {

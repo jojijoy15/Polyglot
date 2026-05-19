@@ -1,7 +1,14 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class WaterContainer {
 
+    /*
+    Space: O(1)
+    Time : O(n)
+     */
     public int mostWater(int[] waterContainer) {
         int result = 0;
         int left = 0;

@@ -1,5 +1,8 @@
 package com.problems.learning.algo.sorting;
 
+import com.problems.learning.tags.Hard;
+
+@Hard
 public class MergeByGap {
 
     // In place merge by gap method

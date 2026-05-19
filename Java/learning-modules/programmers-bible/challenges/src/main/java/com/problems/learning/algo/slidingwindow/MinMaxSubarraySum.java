@@ -1,8 +1,11 @@
 package com.problems.learning.algo.slidingwindow;
+import com.problems.learning.tags.Medium;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.TreeMap;
 
+@Medium
 public class MinMaxSubarraySum {
     /**
      * Find the sum of (min + max) of every subarray of size k.

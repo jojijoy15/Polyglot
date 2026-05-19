@@ -1,5 +1,8 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class RemoveToSort {
 
     public int findLengthOfShortestSubarray(int[] arr) {

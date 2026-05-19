@@ -1,5 +1,8 @@
 package com.problems.learning.algo.math;
 
+import com.problems.learning.tags.Easy;
+
+@Easy
 public class ExcelColumn {
 
     public String calculateColumn(int number) {

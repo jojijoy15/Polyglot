@@ -1,5 +1,9 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Hard;
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class LongestPalindrome {
     /*
         Middle out pattern
@@ -42,5 +46,32 @@ public class LongestPalindrome {
             right++;
         }
         return new int[]{longestPalindromeStart, longestPalindromeLength};
+    }
+
+    @Hard
+    public String longestPalindromeDP(String s) {
+        int n = s.length();
+        boolean[][] dp = new boolean[n][n];
+        int start = 0, maxLen = 1;
+
+        // every single char is a palindrome
+        for (int i = 0; i < n; i++) dp[i][i] = true;
+
+        // check substrings of length 2 to n
+        for (int len = 2; len <= n; len++) {
+            for (int i = 0; i <= n - len; i++) {
+                int j = i + len - 1;
+
+                if (s.charAt(i) == s.charAt(j)) {
+                    dp[i][j] = (len == 2) || dp[i + 1][j - 1];
+                }
+
+                if (dp[i][j] && len > maxLen) {
+                    maxLen = len;
+                    start = i;
+                }
+            }
+        }
+        return s.substring(start, start + maxLen);
     }
 }

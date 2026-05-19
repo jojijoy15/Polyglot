@@ -1,7 +1,10 @@
 package com.problems.learning.algo.sorting;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.Random;
 
+@Medium
 public class QuickSelect {
 
     public int kthGreatestElement(int[] arr, int k) {

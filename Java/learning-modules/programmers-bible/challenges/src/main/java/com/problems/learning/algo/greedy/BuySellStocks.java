@@ -1,5 +1,8 @@
 package com.problems.learning.algo.greedy;
 
+import com.problems.learning.tags.Easy;
+
+@Easy
 public class BuySellStocks {
 
     //Kadane's Algorithm

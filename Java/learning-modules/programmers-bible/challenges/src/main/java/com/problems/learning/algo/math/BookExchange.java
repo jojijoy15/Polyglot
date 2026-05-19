@@ -1,6 +1,8 @@
 package com.problems.learning.algo.math;
 
+import com.problems.learning.tags.Easy;
 
+@Easy
 public class BookExchange {
 
     /*

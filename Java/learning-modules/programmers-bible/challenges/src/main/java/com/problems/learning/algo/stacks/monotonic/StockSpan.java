@@ -1,7 +1,10 @@
 package com.problems.learning.algo.stacks.monotonic;
 
+import com.problems.learning.tags.Easy;
+
 import java.util.Stack;
 
+@Easy
 public class StockSpan {
 
     /*

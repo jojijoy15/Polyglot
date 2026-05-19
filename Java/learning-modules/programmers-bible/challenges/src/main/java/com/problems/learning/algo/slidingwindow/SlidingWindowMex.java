@@ -1,5 +1,7 @@
 package com.problems.learning.algo.slidingwindow;
 
+import com.problems.learning.tags.Hard;
+
 import java.util.Arrays;
 import java.util.TreeSet;
 
@@ -21,6 +23,7 @@ import java.util.TreeSet;
  * Time:  O(n log k)
  * Space: O(k)
  */
+@Hard
 public class SlidingWindowMex {
 
     public static void main(String[] args) {

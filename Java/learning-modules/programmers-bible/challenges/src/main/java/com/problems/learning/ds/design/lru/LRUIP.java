@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 public class LRUIP {
 
+
     private final static Pattern ipPattern  = Pattern.compile("^(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})");
 
     public String findLRUIP(List<String> logs) {

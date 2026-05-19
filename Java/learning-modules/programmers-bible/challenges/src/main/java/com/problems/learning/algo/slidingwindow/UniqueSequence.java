@@ -1,9 +1,12 @@
 package com.problems.learning.algo.slidingwindow;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+@Medium
 public class UniqueSequence {
 
     //Find the longest unique substring length from a given String.
@@ -119,6 +122,93 @@ public class UniqueSequence {
             }
         }
         return s.substring(maxStart, maxStart + maxLen);
+    }
+
+    /*
+     * Minimum length substring with at least K distinct characters.
+     *
+     * Approach: Sliding window — expand right to get K distinct, then shrink left to minimize.
+     *
+     * Example: s = "aabcbcdbca", k = 2
+     *   Window "aab" has 2 distinct, length 3
+     *   Shrink → "ab" has 2 distinct, length 2 → min so far
+     *
+     * Time: O(n), Space: O(k)
+     */
+    public int minSubstringLengthWithKDistinct(String s, int k) {
+        if (s == null || s.isEmpty() || k == 0) return 0;
+        if (k > s.length()) return -1;
+
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int minLen = Integer.MAX_VALUE;
+
+        for (int right = 0; right < s.length(); right++) {
+            charCount.merge(s.charAt(right), 1, Integer::sum);
+
+            // Once we have at least K distinct, shrink from left
+            while (charCount.size() >= k) {
+                minLen = Math.min(minLen, right - left + 1);
+                char leftChar = s.charAt(left);
+                if (charCount.merge(leftChar, -1, Integer::sum) == 0) {
+                    charCount.remove(leftChar);
+                }
+                left++;
+            }
+        }
+
+        return minLen == Integer.MAX_VALUE ? -1 : minLen;
+    }
+
+    /*
+     * Find the subarray of size k with the most unique (distinct) elements.
+     * Returns the starting index of that subarray.
+     *
+     * Approach: Fixed-size sliding window of size k with a frequency map.
+     *   - Slide the window: add right element, remove left element
+     *   - Track distinct count via map size
+     *   - Early exit if distinct == k (all unique, can't do better)
+     *
+     * Example: arr = [1, 2, 1, 3, 4, 2, 3], k = 4
+     *   [1,2,1,3] → 3 distinct
+     *   [2,1,3,4] → 4 distinct ← best (early exit)
+     *   Answer: index 1
+     *
+     * Time: O(n), Space: O(k)
+     */
+    public int maxUniqueSubarray(int[] arr, int k) {
+        if (arr == null || arr.length == 0 || k > arr.length || k <= 0) return -1;
+
+        Map<Integer, Integer> freq = new HashMap<>();
+        int maxDistinct = 0;
+        int bestStart = 0;
+
+        // Build initial window of size k
+        for (int i = 0; i < k; i++) {
+            freq.merge(arr[i], 1, Integer::sum);
+        }
+        maxDistinct = freq.size();
+
+        // Slide the window
+        for (int right = k; right < arr.length; right++) {
+            if (maxDistinct == k) break; // all unique — can't do better
+
+            // Add new right element
+            freq.merge(arr[right], 1, Integer::sum);
+
+            // Remove leftmost element of previous window
+            int left = right - k;
+            if (freq.merge(arr[left], -1, Integer::sum) == 0) {
+                freq.remove(arr[left]);
+            }
+
+            if (freq.size() > maxDistinct) {
+                maxDistinct = freq.size();
+                bestStart = left + 1;
+            }
+        }
+
+        return bestStart;
     }
 
     private int longestSubstringKDistinctLength(String s, int k) {

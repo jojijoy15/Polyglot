@@ -1,5 +1,8 @@
 package com.problems.learning.algo.simplyrecursive;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class RemoveDuplicates {
 
     public String removeConsecutiveDuplicates(String s) {

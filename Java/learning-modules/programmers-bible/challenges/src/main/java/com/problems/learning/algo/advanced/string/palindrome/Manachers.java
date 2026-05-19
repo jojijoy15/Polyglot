@@ -1,5 +1,8 @@
 package com.problems.learning.algo.advanced.string.palindrome;
 
+import com.problems.learning.tags.Hard;
+
+@Hard
 public class Manachers {
 
     /**

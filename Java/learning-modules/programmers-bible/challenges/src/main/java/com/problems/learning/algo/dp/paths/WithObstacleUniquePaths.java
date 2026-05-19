@@ -1,5 +1,8 @@
 package com.problems.learning.algo.dp.paths;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class WithObstacleUniquePaths {
 
     /*

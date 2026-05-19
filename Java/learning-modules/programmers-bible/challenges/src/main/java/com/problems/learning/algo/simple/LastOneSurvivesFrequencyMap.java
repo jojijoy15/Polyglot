@@ -6,6 +6,7 @@ import java.util.Map;
 
 public class LastOneSurvivesFrequencyMap {
 
+    //Note: Just simulation, can do direct calculation as well.
     public List<Character> lastOneSurvives(Map<Character,Integer> frequencyMap){
         int rounds = frequencyMap.values().stream().mapToInt(Integer::intValue).max().getAsInt();
         List<Character> lastChar = Collections.emptyList();

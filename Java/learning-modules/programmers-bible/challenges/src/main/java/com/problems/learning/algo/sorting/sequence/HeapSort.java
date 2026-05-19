@@ -1,7 +1,5 @@
 package com.problems.learning.algo.sorting.sequence;
 
-import com.problems.learning.algo.sorting.Sort;
-
 public class HeapSort implements Sort {
 
     /*
@@ -9,7 +7,7 @@ public class HeapSort implements Sort {
            parent : i/2
            left child : 2 * i
            right child : 2 * i + 1
-         0-based index
+        0-based index
            parent : ( i - 1 )/2
            left child : 2 * i + 1
            right child : 2 * i + 2
@@ -31,6 +29,7 @@ public class HeapSort implements Sort {
         return elements;
     }
 
+    //structure property i.e complete binary tree
     private void heapify(int[] elements) {
         int heapSize = elements.length/2 - 1;
         for (int i = heapSize; i >= 0; i--) {
@@ -38,6 +37,7 @@ public class HeapSort implements Sort {
         }
     }
 
+    // order property
     private void percolateDown(int[] arr, int i, int size) {
         while (true) {
             int left = 2 * i + 1;

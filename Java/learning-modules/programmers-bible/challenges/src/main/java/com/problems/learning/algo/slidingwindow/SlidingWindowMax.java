@@ -1,8 +1,11 @@
 package com.problems.learning.algo.slidingwindow;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+@Medium
 public class SlidingWindowMax {
 
     public int[] maxSlidingWindow(int[] nums, int windowSize) {

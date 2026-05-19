@@ -63,4 +63,111 @@ class SortWithTwoSwapsTest {
         // swap(5,1) → [1,4,3,2,5] → swap(4,2) → [1,2,3,4,5]
         assertThat(solver.canSortInTwoSwaps(new int[]{5, 4, 3, 2, 1})).isTrue();
     }
+
+    // ===================== CYCLE DECOMPOSITION TESTS =====================
+    // Verify cycle decomposition produces identical results to the original approach
+
+    @Test
+    void cycleDecomp_threeCycle_twoSwaps() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{2, 4, 3, 1})).isTrue();
+    }
+
+    @Test
+    void cycleDecomp_twoCycle_oneSwap() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{1, 3, 2, 4})).isFalse();
+    }
+
+    @Test
+    void cycleDecomp_fiveCycle() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{2, 4, 6, 9, 1})).isFalse();
+    }
+
+    @Test
+    void cycleDecomp_twoIndependent2Cycles() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{2, 1, 4, 3})).isTrue();
+    }
+
+    @Test
+    void cycleDecomp_fourCycle() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{2, 3, 4, 1})).isFalse();
+    }
+
+    @Test
+    void cycleDecomp_alreadySorted() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{1, 2, 3, 4})).isFalse();
+    }
+
+    @Test
+    void cycleDecomp_singleElement() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{5})).isFalse();
+    }
+
+    @Test
+    void cycleDecomp_withDuplicates_threeCycle() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{3, 1, 1, 2})).isTrue();
+    }
+
+    @Test
+    void cycleDecomp_withDuplicates_twoIndependent2Cycles() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{2, 2, 1, 1})).isTrue();
+    }
+
+    @Test
+    void cycleDecomp_largeMismatches() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{5, 4, 3, 2, 1})).isTrue();
+    }
+
+    @Test
+    void cycleDecomp_reverseThree() {
+        assertThat(solver.canSortInTwoSwapsCycleDecomposition(new int[]{3, 2, 1})).isFalse();
+    }
+
+    // ===================== POSITIONAL O(n) TESTS =====================
+    // Values are 1..N (no duplicates, no sorting needed)
+
+    @Test
+    void positional_threeCycle() {
+        // [2,4,3,1] → cycle 0→1→3→0 (len 3, 2 swaps)
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{2, 4, 3, 1})).isTrue();
+    }
+
+    @Test
+    void positional_twoCycle() {
+        // [1,3,2,4] → one 2-cycle → 1 swap → false
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{1, 3, 2, 4})).isFalse();
+    }
+
+    @Test
+    void positional_twoIndependent2Cycles() {
+        // [2,1,4,3] → two 2-cycles → 2 swaps
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{2, 1, 4, 3})).isTrue();
+    }
+
+    @Test
+    void positional_fourCycle() {
+        // [2,3,4,1] → 4-cycle → 3 swaps → false
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{2, 3, 4, 1})).isFalse();
+    }
+
+    @Test
+    void positional_alreadySorted() {
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{1, 2, 3, 4})).isFalse();
+    }
+
+    @Test
+    void positional_singleElement() {
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{1})).isFalse();
+    }
+
+    @Test
+    void positional_largeMismatches() {
+        // [5,4,3,2,1] → two 2-cycles (5↔1, 4↔2) + fixed(3) → 2 swaps
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{5, 4, 3, 2, 1})).isTrue();
+    }
+
+    @Test
+    void positional_reverseThree() {
+        // [3,2,1] → 2-cycle (3↔1) + fixed(2) → 1 swap → false
+        assertThat(solver.canSortInTwoSwapsPositional(new int[]{3, 2, 1})).isFalse();
+    }
 }

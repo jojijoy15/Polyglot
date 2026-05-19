@@ -1,5 +1,8 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Medium;
+
+@Medium
 public class TrappingWater {
 
     public int findAmountOfWaterTrapped(int[] heights) {
@@ -34,6 +37,10 @@ public class TrappingWater {
         return totalWater;
     }
 
+    /*
+    Space: O(1)
+    Time : O(n)
+     */
     public int findAmountOfWaterTrappedTwoPointer(int[] heights) {
 
         int left = 0;

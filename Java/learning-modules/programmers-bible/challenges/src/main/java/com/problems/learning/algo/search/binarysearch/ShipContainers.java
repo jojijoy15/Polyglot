@@ -6,30 +6,29 @@ public class ShipContainers {
 
     //Intuition use binary Search
     public int minCapacityOfShip(int[] weights, int days) {
-        int minCapacity = Arrays.stream(weights).max().getAsInt();
+        int minCapacity = Arrays.stream(weights).max().orElse(0);
         int maxCapacity = Arrays.stream(weights).sum();
 
         while (minCapacity <= maxCapacity) {
             int currentCapacity = (minCapacity + maxCapacity) / 2;
-            if (findDays(currentCapacity, weights) <= days) {
+            if (findDays(currentCapacity, weights, days)) { // Ship can finish in time → try a smaller ship → shrink right
                 maxCapacity = currentCapacity - 1;
-            } else {
+            } else {                                          // Ship is too small, takes too many days → need a bigger ship → shrink left
                 minCapacity = currentCapacity + 1;
             }
         }
         return minCapacity;
     }
 
-    private int findDays(int cap, int[] weights) {
+    private boolean findDays(int cap, int[] weights, int givenDays) {
         int load = 0, days = 1;
-        for (int i = 0; i < weights.length; i++) {
-            if(weights[i] + load > cap) {
+        for (int weight : weights) {
+            load += weight;
+            if ( load > cap) {
                 days++;
-                load = weights[i];
-            } else {
-                load += weights[i];
+                load = weight;
             }
         }
-        return days;
+        return days <= givenDays;
     }
 }

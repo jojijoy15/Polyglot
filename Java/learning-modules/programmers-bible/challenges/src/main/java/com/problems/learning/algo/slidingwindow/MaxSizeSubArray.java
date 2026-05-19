@@ -26,6 +26,20 @@ public class MaxSizeSubArray {
                 }
             }
 
+            /*
+                [3, 1, -1, 5, -2, 0, -1, 1] and t = 3
+                {
+                    3: 0, -> yes |
+                    4, 1  -> no  |
+                                 |   [X 3, 2 -> no]
+                    8, 3  -> no  |
+                    6, 4  -> yes |
+                                 |   [X 6, 5 -> yes]
+                    5, 7         |
+                                 |   [X 6, 8 -> yes]
+                }
+
+             */
             // Case 2: subarray in middle
             if (prefixMap.containsKey(sum - target)) {
                 int prevIndex = prefixMap.get(sum - target);

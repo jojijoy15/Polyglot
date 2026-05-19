@@ -1,7 +1,5 @@
 package com.problems.learning.algo.sorting.sequence;
 
-import com.problems.learning.algo.sorting.Sort;
-
 public class SelectionSort implements Sort {
 
 

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public class LongestIncreasingSubSequence {
 
-    // FIXME revisit this and fix the logic
+    // FIXME revisit this and fix the logic to return string
     public int longestIncreasingSubsequence(String input) {
         int n = input.length();
         if (n == 0) return 0;

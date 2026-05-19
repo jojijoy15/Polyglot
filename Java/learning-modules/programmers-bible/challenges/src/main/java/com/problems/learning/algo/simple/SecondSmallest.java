@@ -1,5 +1,8 @@
 package com.problems.learning.algo.simple;
 
+import com.problems.learning.tags.Easy;
+
+@Easy
 public class SecondSmallest {
 
     public int secondSmallest(int[] arr) {

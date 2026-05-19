@@ -18,11 +18,11 @@ public class KokoEatingBanana {
 
             long hours = calculateHours(piles, mid);
 
-            if (hours <= h) {
+            if (hours <= h) { // koko is eating fast, reduce speed
                 result = mid;
-                right = mid - 1; // try smaller speed
-            } else {
-                left = mid + 1;  // need faster speed
+                right = mid - 1;
+            } else {           // koko is eating slow, increase speed
+                left = mid + 1;
             }
         }
 

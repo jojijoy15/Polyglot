@@ -1,7 +1,10 @@
 package com.problems.learning.algo.twopointer;
 
+import com.problems.learning.tags.Easy;
+
 import java.util.*;
 
+@Easy
 public class TwoSum {
 
     /**

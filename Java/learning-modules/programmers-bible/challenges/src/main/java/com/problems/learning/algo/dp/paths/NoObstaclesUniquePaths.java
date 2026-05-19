@@ -1,7 +1,10 @@
 package com.problems.learning.algo.dp.paths;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.Arrays;
 
+@Medium
 public class NoObstaclesUniquePaths {
 
   // DP approach - O(m*n) time, O(m*n) space

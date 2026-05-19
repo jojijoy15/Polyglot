@@ -1,9 +1,12 @@
 package com.problems.learning.algo.simple;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Medium
 public class SmallestNegativeBalance {
 
     public List<String> findWorstBorrower(String[][] transactions) {

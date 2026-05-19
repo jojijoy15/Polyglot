@@ -24,7 +24,7 @@ public class GetAllSubSets {
         current.add(nums[index]);
         createSubsets(nums, index + 1, current, containers);
         current.remove(current.size() - 1);
-        while ((index + 1 ) < nums.length &&  (nums[index + 1] == nums[index])) {
+        while ((index + 1 ) < nums.length && (nums[index + 1] == nums[index])) {
             index++;
         }
         createSubsets(nums, index + 1, current, containers);

@@ -1,5 +1,7 @@
 package com.problems.learning.algo.greedy;
 
+import com.problems.learning.tags.Medium;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.Map;
  * Time:  O(n)
  * Space: O(1) — at most 26 entries in the map
  */
+@Medium
 public class PartitionLabels {
 
     public List<String> partition(String s) {

@@ -31,7 +31,7 @@ public class CompletableFutureOps {
     /** supplyAsync — runs a supplier on the ForkJoinPool.commonPool(), returns a future with the result. */
     public CompletableFuture<String> supplyAsync() {
         return CompletableFuture.supplyAsync(() -> {
-            sleep(100);
+            sleep(1000);
             return "Hello from supplyAsync";
         });
     }
