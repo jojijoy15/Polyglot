@@ -1,0 +1,434 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "f516fcfc-ab98-47c2-92cf-347b89ca10c9",
+      "cell_type": "markdown",
+      "source": "## Java 9 Changes \n\n### New features\n\n1. Introduced Java Platform Module System _(Jigsaw Project)_.\n2. Private method in interfaces\n3. Try with resources with effectively final variable\n4. Diamond Operator with Anonymous classes\n5. `@SafeVarags` is allowed on top of private method also. \n    - Previously was allowed on top of static, final, protected & public methods.\n6. Flow APIs introduced in `java.util.concurrent` package\n    - `Publisher`\n    - `Subscriber`\n    - `Subscription`\n    - `Processor`\n7. `VarHandle` \n8. Introduced HttpClient as incubator, got standardized in Java 11.\n9. Completeable Future API changes\n10. Collection Factories\n11. Stream Enhancement\n12. Optional Enhancement\n8. Process API improvements\n\n\n### Performance improvements\n\n1. String indification\n2. Compact String\n```sh\n    java -XX:-CompactStrings MyApp\n```\n3. GIGC as default garbage collector, replacing CMS.\n\n```sh\n\n        java -XX:+UseG1GC           MyApp   # G1 (now default)\n        java -XX:+UseParallelGC     MyApp   # Parallel GC (was Java 8 default)\n        java -XX:+UseSerialGC       MyApp   # Serial GC\n        java -XX:+UseConcMarkSweepGC MyApp  # CMS (deprecated, removed in java 14)\n\n        java -XX:MaxGCPauseMillis=200 \\     # target max pause\n        -XX:G1HeapRegionSize=16m \\     # region size\n        -XX:G1NewSizePercent=20 \\      # min young gen %\n        -XX:G1MaxNewSizePercent=40 MyApp\n```\n\n### Tools\n\n1. Introduced jShell REPL\n2. jlink to add only modules needed as per project\n\n```sh\n\n        jlink \\\n        --jpms-path $JAVA_HOME/jmods:mods \\\n        --add-modules com.myapp \\\n        --output myruntime \\\n        --compress=2 \\\n        --strip-debug \\\n        --no-header-files \\\n        --no-man-pages\n\n```\n\n3. Multirelease jar for different java runtimes\n\n```sh\n        # MANIFEST.MF must include:\n        Multi-Release: true\n\n        # Build with jar tool:\n        jar --create --file myapp.jar \\\n            --main-class com.myapp.Main \\\n            -C base-classes . \\\n            --release 9 -C java9-classes . \\\n            --release 11 -C java11-classes .\n```\n\n4. Unified Logging for JVM\n\n```sh\n        # Single -Xlog flag for all JVM logging\n        # Syntax: -Xlog[:[selectors][:[output][:[decorators][:output-options]]]]\n\n        java -Xlog:gc                   MyApp   # GC logs\n        java -Xlog:gc*                  MyApp   # GC + sub-tags\n        java -Xlog:gc:file=gc.log       MyApp   # to file\n        java -Xlog:gc+heap=debug        MyApp   # gc.heap at debug level\n        java -Xlog:all=debug:stdout     MyApp   # everything\n        java -Xlog:class+load=info      MyApp   # class loading\n\n        # Log levels: trace, debug, info, warning, error\n        # Decorators: time, uptime, timemillis, pid, tid, level, tags\n        java -Xlog:gc::time,uptime,pid  MyApp\n```",
+      "metadata": {
+        "language": "markdown",
+        "id": "f516fcfc-ab98-47c2-92cf-347b89ca10c9"
+      }
+    },
+    {
+      "id": "9ef60909-d06c-444b-9e63-6154d58fe009",
+      "cell_type": "markdown",
+      "source": "## Interface Changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "9ef60909-d06c-444b-9e63-6154d58fe009"
+      }
+    },
+    {
+      "id": "82d80bff-eb79-43f8-8e46-31f64932736a",
+      "cell_type": "code",
+      "source": "interface Validator<T> {\r\n\r\n    boolean isValid(T value);\r\n\r\n    // Default method using private helper\r\n    default Validator<T> and(Validator<T> other) {\r\n        return value -> isValid(value) && other.isValid(value);\r\n    }\r\n\r\n    default Validator<T> or(Validator<T> other) {\r\n        return value -> isValid(value) || other.isValid(value);\r\n    }\r\n\r\n    default String validate(T value) {\r\n        return isValid(value) ? formatOk(value) : formatFail(value);\r\n    }\r\n\r\n    // private — shared by default methods, not visible to implementors\r\n    private String formatOk(T v)   { return \"✓ Valid: \" + v;   }\r\n    private String formatFail(T v) { return \"✗ Invalid: \" + v; }\r\n\r\n    // private static — utility not needing instance\r\n    private static boolean isNullOrEmpty(String s) {\r\n        return s == null || s.isEmpty();\r\n    }\r\n\r\n    static Validator<String> notEmpty() {\r\n        return s -> !isNullOrEmpty(s);  // uses private static\r\n    }\r\n}\r\n\r\n// Usage\r\nValidator<String> notEmpty = Validator.notEmpty();\r\nValidator<String> notTooLong = s -> s.length() <= 50;\r\nValidator<String> username = notEmpty.and(notTooLong);\r\n\r\nusername.validate(\"Alice\");  // \"✓ Valid: Alice\"\r\nusername.validate(\"\");       // \"✗ Invalid: \"",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "875e6fa6-3b3f-40c3-b6d2-1524d7b1ffe2",
+      "cell_type": "markdown",
+      "source": "## Try With Resource changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "875e6fa6-3b3f-40c3-b6d2-1524d7b1ffe2"
+      }
+    },
+    {
+      "id": "45978b54-28ff-4665-87a6-6374f4c1aecd",
+      "cell_type": "code",
+      "source": "// Java 7/8: had to re-declare effectively final variable in try()\r\nConnection conn = getConnection();\r\ntry (Connection c = conn) { // redundant re-declaration\r\n    c.doWork();\r\n}\r\n\r\n// Java 9: effectively final variable can be used directly\r\nConnection conn = getConnection(); // effectively final\r\ntry (conn) {                        // no re-declaration needed\r\n    conn.doWork();\r\n}\r\n\r\n// Multiple resources\r\nInputStream  in  = new FileInputStream(\"input.txt\");\r\nOutputStream out = new FileOutputStream(\"output.txt\");\r\ntry (in; out) {\r\n    in.transferTo(out);\r\n}\r\n\r\n// Mix of new and existing variables\r\nBufferedReader existing = getReader();\r\ntry (existing; BufferedWriter w = new BufferedWriter(...)) {\r\n    existing.lines().forEach(w::write);\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "d048b0ba-d86a-45ef-81bc-40e769354103",
+      "cell_type": "markdown",
+      "source": "## Anonymous Classes & Diamond operator",
+      "metadata": {
+        "language": "markdown",
+        "id": "d048b0ba-d86a-45ef-81bc-40e769354103"
+      }
+    },
+    {
+      "id": "3191fc6e-a6a6-44c7-bcee-5818e12456fa",
+      "cell_type": "code",
+      "source": "// Java 7/8: diamond <> not allowed with anonymous classes\r\n// Had to specify the type explicitly\r\nComparator<String> c = new Comparator<String>() {  // must write String\r\n    public int compare(String a, String b) { return a.compareTo(b); }\r\n};\r\n\r\n// Java 9: diamond works with anonymous classes (type inferred)\r\nComparator<String> c = new Comparator<>() {  // <> infers String\r\n    public int compare(String a, String b) { return a.compareTo(b); }\r\n};\r\n\r\n// More useful with generic anonymous subclasses\r\nHandler<Request, Response> h = new Handler<>() {\r\n    public Response handle(Request req) { return process(req); }\r\n};",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "cdee7cf8-1bfe-4119-a42d-e3a738dcefa4",
+      "cell_type": "markdown",
+      "source": "## Safe Varags",
+      "metadata": {
+        "language": "markdown",
+        "id": "cdee7cf8-1bfe-4119-a42d-e3a738dcefa4"
+      }
+    },
+    {
+      "id": "0b67b601-0018-4abd-b9ac-25be2d70cf64",
+      "cell_type": "code",
+      "source": "// Java 7: @SafeVarargs only on static, final, or constructor\r\n// Java 9: also allowed on private instance methods\r\n\r\nclass Container<T> {\r\n    @SafeVarargs                          // NEW in Java 9\r\n    private void process(T... items) {    // private instance method\r\n        for (T item : items) doWork(item);\r\n    }\r\n}\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "5d10939f-b760-406e-af10-b7f334ec822e",
+      "cell_type": "markdown",
+      "source": "## Underscore as variable",
+      "metadata": {
+        "language": "markdown",
+        "id": "5d10939f-b760-406e-af10-b7f334ec822e"
+      }
+    },
+    {
+      "id": "375699ed-7dae-442e-9ae9-d36688c2e90d",
+      "cell_type": "code",
+      "source": "// Java 8: _ alone as variable name gave a warning\r\n// Java 9: compile ERROR — reserved for future use (pattern matching)\r\n\r\n// This now fails to compile:\r\n// String _ = \"unused\";  ← error in Java 9\r\n// int _ = getValue();   ← error in Java 9\r\n\r\n// Use descriptive names instead\r\nString unused = \"unused\";\r\nint ignored   = getValue();\r\n\r\n// (In Java 21, _ is a proper unnamed variable pattern)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "12ccfdda-a638-4634-b6ec-101b2f638b95",
+      "cell_type": "markdown",
+      "source": "## Arrays API changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "12ccfdda-a638-4634-b6ec-101b2f638b95"
+      }
+    },
+    {
+      "id": "d3f04cc6-43e4-4dfe-9f58-970991172b05",
+      "cell_type": "code",
+      "source": "// Returns the index of the first mismatch, or -1 if equal\r\nint[] a = {1, 2, 3, 4, 5};\r\nint[] b = {1, 2, 7, 4, 5};\r\nArrays.mismatch(a, b); // 2 (index 2 differs: 3 vs 7)\r\n\r\nint[] c = {1, 2, 3, 4, 5};\r\nArrays.mismatch(a, c); // -1 (equal)\r\n\r\n// Range variant\r\nArrays.mismatch(a, 1, 4, b, 1, 4); // mismatch in [1,4)\r\n\r\n// Works for all types: byte[], char[], Object[], etc.\r\nString[] sa = {\"a\", \"b\", \"c\"};\r\nString[] sb = {\"a\", \"x\", \"c\"};\r\nArrays.mismatch(sa, sb); // 1",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "fdfd1885-7cc6-4041-87a7-677088baec41",
+      "cell_type": "markdown",
+      "source": "## Objects API Changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "fdfd1885-7cc6-4041-87a7-677088baec41"
+      }
+    },
+    {
+      "id": "733e7ebb-a1f4-4cb9-a31c-acbccd9364fe",
+      "cell_type": "code",
+      "source": "// requireNonNullElse — return value or default (not null)\r\nString name = Objects.requireNonNullElse(getName(), \"Unknown\");\r\n// If getName() returns null → \"Unknown\". If default is null → NPE.\r\n\r\n// requireNonNullElseGet — lazy supplier version\r\nString name2 = Objects.requireNonNullElseGet(getName(), () -> computeDefault());\r\n\r\n// checkIndex — bounds checking\r\nObjects.checkIndex(5, 10);   // 5 — valid index in [0,10)\r\nObjects.checkIndex(10, 10);  // throws IndexOutOfBoundsException\r\n\r\n// checkFromToIndex — range check [fromIndex, toIndex)\r\nObjects.checkFromToIndex(2, 5, 10); // OK: [2,5) is within [0,10)\r\nObjects.checkFromToIndex(2, 11, 10);// throws\r\n\r\n// checkFromIndexSize — [fromIndex, fromIndex+size)\r\nObjects.checkFromIndexSize(2, 5, 10); // OK: [2,7) within [0,10)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "44a7473d-914d-48f2-be91-1ffb5dc89e25",
+      "cell_type": "markdown",
+      "source": "## String Enhancements",
+      "metadata": {
+        "language": "markdown",
+        "id": "44a7473d-914d-48f2-be91-1ffb5dc89e25"
+      }
+    },
+    {
+      "id": "55965361-d53b-4e58-b0bf-d9367f64fbb3",
+      "cell_type": "code",
+      "source": "// chars() and codePoints() return IntStream — technically Java 8\r\n// but commonly used in Java 9 context\r\n\"Hello\".chars().forEach(c -> System.out.print((char)c));\r\n\r\n// InputStream.transferTo(OutputStream) — new in Java 9\r\ntry (InputStream in = new FileInputStream(\"a.txt\");\r\n     OutputStream out = new FileOutputStream(\"b.txt\")) {\r\n    long bytes = in.transferTo(out); // copy all bytes\r\n}\r\n\r\n// InputStream.readAllBytes() — new in Java 9\r\ntry (InputStream in = getClass().getResourceAsStream(\"/data.json\")) {\r\n    byte[] bytes = in.readAllBytes();\r\n    String json = new String(bytes, StandardCharsets.UTF_8);\r\n}\r\n\r\n// InputStream.readNBytes(n) — read exactly n bytes\r\nbyte[] header = in.readNBytes(16);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "b293bd87-5b60-40bf-99a5-54b3f1855c87",
+      "cell_type": "markdown",
+      "source": "## Varhandle\r\n\r\nThe documentation is generally split into these core sections:\r\n\r\n    1. Coordinate Types: The \"parameters\" required to locate a variable.\r\n    2. Access Modes: The different ways you can read or write to memory (Plain, Opaque, Release/Acquire, Volatile).\r\n    3. Atomic Update Operations: Methods like `compareAndSet` or `getAndAdd`.\r\n    4. Memory Fences: Rules for how the CPU is allowed to reorder your instructions.\r\n\r\n### Coordinate Types\r\n\r\n- Coordinate Types: How to target the specific variable (or family of variables) in memory.\r\n\r\n### Access Modes\r\n\r\n|Access Mode🚦|What it means|When to use it|\r\n|-|-|-|\r\n|Plain|rites exactly like a normal Java variable.|\tWhen only one thread is using the variable.|\r\n|Opaque\t|Ensures the read/write happens in one piece (no torn data), but doesn't force order.|When you just need to make sure a value isn't corrupted mid-write.|\r\n|Release / Acquire|\tCreates a \"fence\". A 'Release' write ensures all previous writes are finished before this one. An 'Acquire' read ensures no subsequent reads happen before this one.|\tWhen coordinating specific tasks between threads without locking everything.|\r\n|Volatile|\tThe strictest mode. Any write is immediately visible to all other threads, and prevents the CPU from reordering instructions around it.|\tWhen multiple threads must always see the absolute latest value.|\r\n\r\n### Atomic Updates \r\nAtomic Updates: Using compareAndSet and getAndAdd for safe, uninterruptible changes.\r\n\r\n### Memory Fences\r\n\r\nMemory Fences: Controlling how the CPU reorders instructions globally.\r\n\r\n",
+      "metadata": {
+        "language": "markdown",
+        "id": "b293bd87-5b60-40bf-99a5-54b3f1855c87"
+      }
+    },
+    {
+      "id": "1079c1c9-c3cc-4e4a-afc7-eeef4a6bf2b3",
+      "cell_type": "code",
+      "source": "// Low-level atomic & memory-fence operations on fields and array elements\r\n// Replacement for sun.misc.Unsafe in most cases\r\nimport java.lang.invoke.*;\r\n\r\nclass Counter {\r\n    volatile int count = 0;\r\n\r\n    static final VarHandle COUNT;\r\n    static {\r\n        try {\r\n            COUNT = MethodHandles.lookup()\r\n                .findVarHandle(Counter.class, \"count\", int.class);\r\n        } catch (Exception e) { throw new Error(e); }\r\n    }\r\n\r\n    void increment() {\r\n        COUNT.getAndAdd(this, 1);               // atomic add\r\n    }\r\n    boolean compareAndSet(int expected, int update) {\r\n        return (boolean) COUNT.compareAndSet(this, expected, update);\r\n    }\r\n}\r\n\r\n// Memory access modes: plain, opaque, acquire, release, volatile\r\nCOUNT.get(counter);                 // plain read\r\nCOUNT.getVolatile(counter);         // volatile read\r\nCOUNT.getAcquire(counter);          // acquire semantics\r\nCOUNT.setRelease(counter, 42);     // release semantics\r\nCOUNT.getAndSet(counter, 0);       // atomic swap",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "aa7b564d-3bcd-427c-a9ff-bd3da114c280",
+      "cell_type": "markdown",
+      "source": "## Completable Future Upgrades",
+      "metadata": {
+        "language": "markdown",
+        "id": "aa7b564d-3bcd-427c-a9ff-bd3da114c280"
+      }
+    },
+    {
+      "id": "e3a41e40-2051-44de-8493-8b9171df8842",
+      "cell_type": "code",
+      "source": "static void sleep(long millis) {\r\n    try {\r\n        Thread.sleep(millis);\r\n    } catch (InterruptedException e) {\r\n        Thread.currentThread().interrupt();\r\n        throw new RuntimeException(e);\r\n    }\r\n}",
+      "metadata": {
+        "language": "java",
+        "id": "e3a41e40-2051-44de-8493-8b9171df8842",
+        "executionSummary": {
+          "executionOrder": 3,
+          "success": true
+        }
+      },
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "id": "9df5256a-4ca6-4141-9da0-881dac8831cb",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * orTimeout — fails the future with TimeoutException if it doesn't complete in time.\r\n */\r\nimport java.util.concurrent.CompletableFuture;\r\nimport java.util.concurrent.TimeUnit;\r\n\r\npublic CompletableFuture<String> orTimeoutExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> {\r\n                sleep(2000); // very slow\r\n                return \"Too late\";\r\n            })\r\n            .orTimeout(200, TimeUnit.MILLISECONDS)\r\n            .exceptionally(ex -> \"Timed out: \" + ex);\r\n}\r\norTimeoutExample().thenAccept(System.out::println).join(); // Output: Timed out: java.util.concurrent.TimeoutException\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "9df5256a-4ca6-4141-9da0-881dac8831cb",
+        "executionSummary": {
+          "executionOrder": 6,
+          "success": true
+        }
+      },
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Too late\r\n"
+          },
+          "metadata": {},
+          "execution_count": 6
+        }
+      ]
+    },
+    {
+      "id": "cad2c81f-b10f-4c92-987e-7f7e50b6e7f8",
+      "cell_type": "code",
+      "source": "/**\r\n * completeOnTimeout — provides a default value if the future doesn't complete in time.\r\n * Unlike orTimeout, this does NOT throw — it quietly substitutes the default.\r\n */\r\npublic CompletableFuture<String> completeOnTimeoutExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> {\r\n                sleep(2000); // very slow\r\n                return \"Actual result\";\r\n            })\r\n            .completeOnTimeout(\"Default (timed out)\", 200, TimeUnit.MILLISECONDS);\r\n}\r\n\r\ncompleteOnTimeoutExample().thenAccept(System.out::println).join(); // Output: Default (timed out)",
+      "metadata": {
+        "language": "java",
+        "id": "cad2c81f-b10f-4c92-987e-7f7e50b6e7f8",
+        "executionSummary": {
+          "executionOrder": 8,
+          "success": true
+        }
+      },
+      "execution_count": 8,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Actual result\r\n"
+          },
+          "metadata": {},
+          "execution_count": 8
+        }
+      ]
+    },
+    {
+      "id": "0fcdd838-56da-4d41-bdec-9e1c046576b0",
+      "cell_type": "code",
+      "source": "// delayedExecutor — execute after a delay\r\n\r\nimport java.util.concurrent.CompletableFuture;\r\nimport java.util.concurrent.Executor;\r\nimport java.util.concurrent.Executors;\r\n\r\nExecutor delayed = CompletableFuture\r\n    .delayedExecutor(2, TimeUnit.SECONDS);\r\n\r\nvar helloExecute = CompletableFuture.supplyAsync(() -> \"hello\", delayed)\r\n    .thenAccept(System.out::println); // prints \"hello\" after 2 seconds\r\n\r\n// With custom executor base\r\nExecutor delayed2 = CompletableFuture\r\n    .delayedExecutor(1, TimeUnit.SECONDS, Executors.newFixedThreadPool(2));\r\n\r\ndelayed2.execute(() -> System.out.println(\"Executed after 1 second on custom executor\"));\r\nhelloExecute.join(); // Wait for the first delayed task to complete\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "0fcdd838-56da-4d41-bdec-9e1c046576b0",
+        "executionSummary": {
+          "executionOrder": 12,
+          "success": true
+        }
+      },
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Executed after 1 second on custom executor\r\nhello\r\n"
+          },
+          "metadata": {},
+          "execution_count": 12
+        }
+      ]
+    },
+    {
+      "id": "b69c7d40-4579-464e-a985-835d6f9704d2",
+      "cell_type": "code",
+      "source": "// copy() — returns a new CF that mirrors completion of this one\r\n// Cannot be completed externally (unlike the original)\r\n\r\nCompletableFuture<String> original = new CompletableFuture<>();\r\nCompletableFuture<String> copy = original.copy();\r\noriginal.complete(\"done\");\r\ncopy.join(); // \"done\" — mirrors original\r\ncopy.complete(\"other\"); // ignored — copy cannot be externally completed\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "d8cf419a-6a07-4ccc-8c66-c3f1525e7679",
+      "cell_type": "code",
+      "source": "// completeAsync — complete using Supplier asynchronously\r\nCompletableFuture<String> cf = new CompletableFuture<>();\r\ncf.completeAsync(() -> computeValue());\r\ncf.completeAsync(() -> computeValue(), myExecutor);\r\n\r\n// newIncompleteFuture() — create same type subclass\r\n// Useful when subclassing CompletableFuture\r\nclass MyFuture<T> extends CompletableFuture<T> {\r\n    @Override\r\n    public <U> CompletableFuture<U> newIncompleteFuture() {\r\n        return new MyFuture<>(); // chained ops return MyFuture, not CF\r\n    }\r\n}\r\n\r\n// defaultExecutor() — the executor used for async methods\r\nExecutor exec = new CompletableFuture<>().defaultExecutor();\r\n// ForkJoinPool.commonPool() by default\r\n\r\n// minimalCompletionStage() — read-only view, no direct completion\r\nCompletionStage<String> stage = original.minimalCompletionStage();",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "2aedd79c-be99-438d-9730-f282068d1146",
+      "cell_type": "markdown",
+      "source": "## Collection Upgrades",
+      "metadata": {
+        "language": "markdown",
+        "id": "2aedd79c-be99-438d-9730-f282068d1146"
+      }
+    },
+    {
+      "id": "de081dd9-64fb-47c5-ac28-dbd18c227992",
+      "cell_type": "code",
+      "source": "// Collection Factories\r\n\r\n// Empty list\r\nList<String> empty = List.of();\r\n\r\n// Up to 10 elements (varargs version also available)\r\nList<String> langs = List.of(\"Java\", \"Kotlin\", \"Scala\");\r\nList<Integer> nums  = List.of(1, 2, 3, 4, 5);\r\n\r\n// Characteristics\r\nlangs.get(0);       // \"Java\"\r\nlangs.size();        // 3\r\nlangs.contains(\"Kotlin\"); // true\r\nlangs.indexOf(\"Scala\");   // 2\r\n\r\n// Throws UnsupportedOperationException — truly immutable\r\n// langs.add(\"Groovy\");    ← throws\r\n// langs.remove(\"Java\");   ← throws\r\n// langs.set(0, \"Go\");     ← throws\r\n\r\n// Null not allowed — throws NullPointerException\r\n// List.of(\"a\", null, \"b\");  ← throws\r\n\r\n// Iteration order is preserved\r\nlangs.forEach(System.out::println);\r\n\r\n// Copy to mutable list if needed\r\nList<String> mutable = new ArrayList<>(langs);\r\n\r\n// Overloads: List.of() has 12 overloads (0-10 args) + varargs\r\nList.of(\"a\");                   // 1 element\r\nList.of(\"a\",\"b\");              // 2 elements\r\nList.of(\"a\",\"b\",\"c\",\"d\",\"e\",\r\n        \"f\",\"g\",\"h\",\"i\",\"j\"); // 10 elements",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "33e513ac-5423-40d2-ac93-26a47441474e",
+      "cell_type": "code",
+      "source": "// Collection Factories\r\n\r\n// Empty set\r\nSet<String> empty = Set.of();\r\n\r\nSet<String> roles   = Set.of(\"ADMIN\", \"USER\", \"VIEWER\");\r\nSet<Integer> primes  = Set.of(2, 3, 5, 7, 11);\r\n\r\n// Iteration order is NOT guaranteed (unlike List.of)\r\nroles.contains(\"ADMIN\"); // true\r\nroles.size();             // 3\r\n\r\n// Duplicate elements throw IllegalArgumentException\r\n// Set.of(\"a\", \"a\");  ← throws at creation time\r\n\r\n// Null not allowed\r\n// Set.of(\"a\", null); ← throws NullPointerException\r\n\r\n// Copy to mutable\r\nSet<String> mutable = new HashSet<>(roles);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "a8f9bc1d-55b4-4483-991e-3d02e8e6921e",
+      "cell_type": "code",
+      "source": "// Map Factories\r\n\r\n// Empty map\r\nMap<String, Integer> empty = Map.of();\r\n\r\n// Up to 10 key-value pairs as alternating args\r\nMap<String, Integer> scores = Map.of(\r\n    \"Alice\", 90,\r\n    \"Bob\",   85,\r\n    \"Carol\", 95\r\n);\r\n\r\nscores.get(\"Alice\");        // 90\r\nscores.getOrDefault(\"Dave\", 0); // 0\r\nscores.containsKey(\"Bob\");  // true\r\nscores.containsValue(95);   // true\r\nscores.entrySet().forEach(e -> System.out.println(e.getKey() + \"=\" + e.getValue()));\r\n\r\n// For >10 entries use Map.ofEntries + Map.entry()\r\nMap<String, Integer> big = Map.ofEntries(\r\n    Map.entry(\"a\", 1),\r\n    Map.entry(\"b\", 2),\r\n    Map.entry(\"c\", 3),\r\n    Map.entry(\"d\", 4),\r\n    Map.entry(\"e\", 5),\r\n    Map.entry(\"f\", 6),\r\n    Map.entry(\"g\", 7),\r\n    Map.entry(\"h\", 8),\r\n    Map.entry(\"i\", 9),\r\n    Map.entry(\"j\", 10),\r\n    Map.entry(\"k\", 11)   // beyond 10\r\n);\r\n\r\n// Map.copyOf — defensive immutable copy of existing map\r\nMap<String, Integer> copy = Map.copyOf(existingMap);\r\n\r\n// Similarly: List.copyOf(coll), Set.copyOf(coll)\r\nList<String> listCopy = List.copyOf(existingList);\r\nSet<String> setCopy  = Set.copyOf(existingSet);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "75922266-f4bd-485b-811b-e0836891dfc8",
+      "cell_type": "markdown",
+      "source": "## Stream Upgrades",
+      "metadata": {
+        "language": "markdown",
+        "id": "75922266-f4bd-485b-811b-e0836891dfc8"
+      }
+    },
+    {
+      "id": "91d42601-661c-4fcd-a5ca-47018e71811e",
+      "cell_type": "code",
+      "source": "// Takes elements while predicate is true, stops at first false\r\n// (Short-circuits — like a lazy prefix of the stream)\r\nList<Integer> result = Stream.of(1, 2, 3, 10, 4, 5)\r\n    .takeWhile(n -> n < 5)\r\n    .collect(Collectors.toList());\r\n// [1, 2, 3]  — stops at 10 (first element ≥ 5)\r\n\r\nList<String> words = Stream.of(\"ant\", \"bee\", \"cat\", \"STOP\", \"dog\")\r\n    .takeWhile(s -> !s.equals(\"STOP\"))\r\n    .collect(Collectors.toList());\r\n// [ant, bee, cat]\r\n\r\n// On unordered streams — behaviour is non-deterministic\r\n// Most useful with sorted/ordered streams",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "cee42b71-1c02-4c96-83ca-9eb46533502f",
+      "cell_type": "code",
+      "source": "// Drops elements while predicate is true, returns the rest\r\n// (Complement of takeWhile)\r\nList<Integer> result = Stream.of(1, 2, 3, 10, 4, 5)\r\n    .dropWhile(n -> n < 5)\r\n    .collect(Collectors.toList());\r\n// [10, 4, 5] — drops 1,2,3; keeps everything from 10 onwards\r\n\r\n// Skip a header in a sorted/ordered stream\r\nList<String> log = List.of(\"DEBUG msg1\",\"DEBUG msg2\",\"INFO start\",\"ERROR fail\");\r\nlog.stream()\r\n   .dropWhile(l -> l.startsWith(\"DEBUG\"))\r\n   .forEach(System.out::println);\r\n// INFO start\r\n// ERROR fail",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0076bdf9-5c82-4792-acfc-267cc541c06b",
+      "cell_type": "code",
+      "source": "// Java 8 iterate was infinite — needed limit()\r\n// Java 9 adds a predicate (hasNext) to make it finite\r\n\r\n// Old Java 8 way:\r\nStream.iterate(0, n -> n + 1).limit(10); // 0..9\r\n\r\n// Java 9 — like a for loop in stream form:\r\n// Stream.iterate(seed, hasNext, next)\r\nStream.iterate(0, n -> n < 10, n -> n + 1)\r\n      .forEach(System.out::println); // 0 1 2 3 4 5 6 7 8 9\r\n\r\n// Powers of 2 up to 1024\r\nStream.iterate(1, n -> n <= 1024, n -> n * 2)\r\n      .collect(Collectors.toList());\r\n// [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]\r\n\r\n// Equivalent for-loop pattern\r\n// for (int i = 0; i < 10; i++) { ... }\r\n// Stream.iterate(0, i -> i < 10, i -> i + 1)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "89cd7a2f-b86c-4050-9cf5-0a5b8b1dbee0",
+      "cell_type": "code",
+      "source": "// Returns a stream of 0 or 1 element (0 if null, 1 otherwise)\r\n// Avoids NullPointerException when flatMapping nullable values\r\n\r\nStream.ofNullable(\"hello\").count(); // 1\r\nStream.ofNullable(null).count();    // 0\r\n\r\n// Key use case: safe flatMap of nullable fields\r\nList<String> users = List.of(\"Alice\", \"Bob\", \"Carol\");\r\n\r\nMap<String, String> emails = Map.of(\"Alice\", \"alice@x.com\", \"Carol\", \"carol@x.com\");\r\n\r\n// Java 8: had to filter nulls separately\r\n// Java 9: elegant flatMap\r\nList<String> known = users.stream()\r\n    .flatMap(u -> Stream.ofNullable(emails.get(u)))\r\n    .collect(Collectors.toList());\r\n// [\"alice@x.com\", \"carol@x.com\"]  — Bob's null is skipped cleanly",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "f62854ba-db44-4818-86fb-b58aa573e9f9",
+      "cell_type": "markdown",
+      "source": "## Optional Enhancement",
+      "metadata": {
+        "language": "markdown",
+        "id": "f62854ba-db44-4818-86fb-b58aa573e9f9"
+      }
+    },
+    {
+      "id": "e8a9a405-bb4a-465a-a17b-a639ff11fe8c",
+      "cell_type": "code",
+      "source": "// Java 8: ifPresent() only runs when value exists, no else branch\r\n// Java 9: ifPresentOrElse() handles both cases\r\n\r\nOptional<String> name = Optional.of(\"Alice\");\r\nname.ifPresent(\r\n    n -> System.out.println(\"Hello, \" + n)  // if present\r\n);\r\n// \"Hello, Alice\"\r\n\r\nOptional.<String>empty().ifPresentOrElse(\r\n    n -> System.out.println(\"Hello, \" + n),\r\n    () -> System.out.println(\"No user found\")\r\n);\r\n// \"No user found\"\r\n\r\n// Practical: update DB or log warning\r\nfindUser(id).ifPresentOrElse(\r\n    user -> userRepository.save(user.withUpdatedEmail(email)),\r\n    ()   -> log.warn(\"User {} not found, skipping update\", id)\r\n);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "f10a6783-00d8-4d69-ab68-6c9075965c38",
+      "cell_type": "code",
+      "source": "// Returns this Optional if present, otherwise invokes supplier for another Optional\r\n// Key difference from orElse: stays in Optional world (lazy, no null)\r\n\r\nOptional<String> primary   = Optional.empty();\r\nOptional<String> secondary = Optional.of(\"fallback\");\r\n\r\nOptional<String> result = primary.or(() -> secondary);\r\n// Optional[\"fallback\"]\r\n\r\n// Chain multiple fallback sources\r\nOptional<User> user = findInCache(id)\r\n    .or(() -> findInDatabase(id))\r\n    .or(() -> findInArchive(id));\r\n\r\n// vs orElseGet — stays in Optional, lazy\r\n// orElse/orElseGet — exits Optional and returns raw value\r\n\r\n// Chained further\r\nfindUser(id)\r\n    .or(() -> findGuest(id))\r\n    .map(User::getEmail)\r\n    .ifPresent(email -> sendWelcome(email));",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "9f1cacfd-b122-477a-ba22-a03b28384e20",
+      "cell_type": "code",
+      "source": "// Converts Optional to a Stream of 0 or 1 element\r\n// Enables Optional to participate in Stream pipelines cleanly\r\n\r\nOptional<String> opt = Optional.of(\"hello\");\r\nopt.stream().count();          // 1\r\nOptional.empty().stream().count(); // 0\r\n\r\n// KEY USE CASE: flatMap a List of Optionals into actual values\r\nList<Optional<String>> optionals = List.of(\r\n    Optional.of(\"Alice\"),\r\n    Optional.empty(),\r\n    Optional.of(\"Bob\"),\r\n    Optional.empty(),\r\n    Optional.of(\"Carol\")\r\n);\r\n\r\n// Java 8 way (verbose):\r\noptionals.stream()\r\n    .filter(Optional::isPresent)\r\n    .map(Optional::get)\r\n    .collect(Collectors.toList());\r\n\r\n// Java 9 way (elegant):\r\nList<String> names = optionals.stream()\r\n    .flatMap(Optional::stream)         // Optional::stream is the method ref\r\n    .collect(Collectors.toList());\r\n// [\"Alice\", \"Bob\", \"Carol\"]\r\n\r\n// Combine with findFirst/findAny\r\nList.of(\"a1\", \"b2\", \"c3\").stream()\r\n    .map(s -> s.matches(\"\\\\d\") ? Optional.of(s) : Optional.empty())\r\n    .flatMap(Optional::stream)\r\n    .findFirst();",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}

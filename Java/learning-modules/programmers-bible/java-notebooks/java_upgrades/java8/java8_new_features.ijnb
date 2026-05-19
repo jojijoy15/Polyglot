@@ -1,0 +1,594 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "be0d9cd2-fd84-474d-ba42-4a8ed99d5ecd",
+      "cell_type": "markdown",
+      "source": "## Java 8 Changes\n\n### New features\n\n1. Lambda expression & Functional Interfaces\n2. Named Lambda expression aka Method Reference\n3. Default Methods _(Supports backward compatibility)_\n4. for each enhancement\n5. Stream & Collector for data processing\n6. Type inference enhancement for lambda expresion\n7. Annotation type changes introducing `TYPE_USE`, `TYPE_PARAMETER` and Repeatable Annotation\n8. Spliterator\n9. Concurrency & MultiThreading\n    - DS\n        - Concurrent HashMap\n            - Concurrent HashMap changed from segment locks to fine-grained locks\n            - Introduced methods like reduce(), search()\n        - Map\n            - Introduced new methods map.compute*(), merge(), forEach()\n    - Framework\n        - ForkJoin\n            - Introduced ForkJoin.commonpool() for parallelStream() and CompleteableFuture.\n        - Executors\n            - Introduced work Stealing Pool\n        - Locks\n            - StampedLock\n10. CompleteableFuture\n11. Some New classes \n    - Optional\n    - Time APIs\n        - Core (Local)\n            - LocalDate\n            - LocalTime\n            - LocalDateTime\n        - Timezone / Offset\n            - ZonedDateTime\n            - OffsetDateTime\n            - OffsetTime\n        - Instant & Clock\n            - Instant\n            - Clock\n        - Duration / Period\n            - Duration\n            - Period\n        - Zone\n            - ZoneId\n            - ZoneOffset\n        - Year / Month Variants\n            - Year\n            - YearMonth\n            - MonthDay\n        - Enum\n            - Month\n            - DayOfWeek\n        - Formatting & Parsing\n            - DateTimeFormatter\n            - FormatStyle\n        - Temporal (Advanced / Framework-level)\n            - Temporal\n            - TemporalAccessor\n            - TemporalAdjuster\n            - TemporalAdjusters\n            - TemporalAmount\n            - TemporalField\n            - TemporalUnit\n        - Chronology (Alternate calendars)\n            - Chronology\n            - ChronoLocalDate\n            - ChronoLocalDateTime\n            - ChronoZonedDateTime\n            - IsoChronology\n        - Exception\n            - DateTimeException\n",
+      "metadata": {
+        "language": "markdown",
+        "id": "be0d9cd2-fd84-474d-ba42-4a8ed99d5ecd"
+      }
+    },
+    {
+      "id": "894142c3-ce31-4a8b-8679-87068718b6fd",
+      "cell_type": "code",
+      "source": "// Anonymous class\r\n\r\n\r\n//Before Java 8, we used to create anonymous classes to implement functional interfaces (interfaces with a single abstract method).\r\ninterface Printer {\r\n    void print();\r\n}\r\n\r\nPrinter printer = new Printer() {\r\n    @Override\r\n    public void print() {\r\n        System.out.println(\"Hello, World! From Printer\");\r\n    }\r\n};\r\n\r\npublic void printSimple(Printer printer) {\r\n    printer.print();\r\n}\r\n\r\nprintSimple(printer);\r\n\r\n\r\n// Lambda expression => Replacement for only simple Anononymous classes\r\n\r\n// Simple Lambda expression\r\n\r\n@FunctionalInterface\r\ninterface Display {\r\n    void show();\r\n}\r\n\r\npublic void simpleDisplay(Display display) {\r\n    display.show();\r\n}\r\n\r\nDisplay display = () -> System.out.println(\"Hello, World! From Display\");\r\n\r\nsimpleDisplay(display);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "9573f9ff-d7c2-4d1e-bf2f-7b00fa719b5d",
+      "cell_type": "code",
+      "source": "import java.util.function.*;\r\n\r\n// ===================== Core Functional Interfaces =====================\r\n\r\n// 1. Function<T, R> — takes T, returns R\r\nFunction<String, Integer> strLength = String::length;\r\nSystem.out.println(\"Function: \" + strLength.apply(\"Hello\")); // 5\r\n\r\n// andThen / compose\r\nFunction<Integer, Integer> doubleIt = x -> x * 2;\r\nFunction<Integer, Integer> addTen = x -> x + 10;\r\nSystem.out.println(\"andThen: \" + doubleIt.andThen(addTen).apply(3));  // 16\r\nSystem.out.println(\"compose: \" + doubleIt.compose(addTen).apply(3));  // 26\r\n\r\n// 2. Consumer<T> — takes T, returns void\r\nConsumer<String> printer = s -> System.out.println(\"Consumer: \" + s);\r\nprinter.accept(\"Hello\");\r\n\r\nConsumer<String> shout = s -> System.out.println(\"!\" + s.toUpperCase() + \"!\");\r\nprinter.andThen(shout).accept(\"chain\"); // both run in sequence\r\n\r\n// 3. Supplier<T> — takes nothing, returns T\r\nSupplier<Double> randomSupplier = Math::random;\r\nSystem.out.println(\"Supplier: \" + randomSupplier.get());\r\n\r\n// 4. Predicate<T> — takes T, returns boolean\r\nPredicate<String> isEmpty = String::isEmpty;\r\nPredicate<String> isShort = s -> s.length() < 5;\r\nSystem.out.println(\"Predicate: \" + isEmpty.test(\"\"));          // true\r\nSystem.out.println(\"and: \" + isEmpty.negate().and(isShort).test(\"Hi\")); // true\r\nSystem.out.println(\"or: \" + isEmpty.or(isShort).test(\"\"));     // true\r\n\r\n// 5. BiFunction<T, U, R> — takes T and U, returns R\r\nBiFunction<String, String, String> concat = String::concat;\r\nSystem.out.println(\"BiFunction: \" + concat.apply(\"Hello, \", \"World\")); // Hello, World\r\n\r\n// 6. UnaryOperator<T> — Function<T, T>\r\nUnaryOperator<String> toUpper = String::toUpperCase;\r\nSystem.out.println(\"UnaryOperator: \" + toUpper.apply(\"java\")); // JAVA\r\n\r\n// 7. BinaryOperator<T> — BiFunction<T, T, T>\r\nBinaryOperator<Integer> max = BinaryOperator.maxBy(Comparator.naturalOrder());\r\nBinaryOperator<Integer> min = BinaryOperator.minBy(Comparator.naturalOrder());\r\nSystem.out.println(\"BinaryOperator max: \" + max.apply(3, 7)); // 7\r\nSystem.out.println(\"BinaryOperator min: \" + min.apply(3, 7)); // 3\r\n\r\n// 8. BiConsumer<T, U> — takes T and U, returns void\r\nBiConsumer<String, Integer> printEntry = (k, v) -> System.out.println(\"BiConsumer: \" + k + \"=\" + v);\r\nprintEntry.accept(\"age\", 25);\r\n\r\n// 9. BiPredicate<T, U> — takes T and U, returns boolean\r\nBiPredicate<String, Integer> lengthCheck = (s, len) -> s.length() == len;\r\nSystem.out.println(\"BiPredicate: \" + lengthCheck.test(\"Java\", 4)); // true\r\n\r\n// ===================== Primitive Specializations =====================\r\n\r\n// --- Int ---\r\nIntFunction<String> intToStr = i -> \"Number: \" + i;\r\nSystem.out.println(\"IntFunction: \" + intToStr.apply(42));\r\n\r\nIntConsumer intPrint = i -> System.out.println(\"IntConsumer: \" + i);\r\nintPrint.accept(10);\r\n\r\nIntSupplier intSupply = () -> 99;\r\nSystem.out.println(\"IntSupplier: \" + intSupply.getAsInt());\r\n\r\nIntPredicate isPositive = i -> i > 0;\r\nSystem.out.println(\"IntPredicate: \" + isPositive.test(5)); // true\r\n\r\nIntUnaryOperator square = i -> i * i;\r\nSystem.out.println(\"IntUnaryOperator: \" + square.applyAsInt(6)); // 36\r\n\r\nIntBinaryOperator intSum = Integer::sum;\r\nSystem.out.println(\"IntBinaryOperator: \" + intSum.applyAsInt(3, 4)); // 7\r\n\r\nToIntFunction<String> strToInt = String::length;\r\nSystem.out.println(\"ToIntFunction: \" + strToInt.applyAsInt(\"Hello\")); // 5\r\n\r\nToIntBiFunction<String, String> combinedLen = (a, b) -> a.length() + b.length();\r\nSystem.out.println(\"ToIntBiFunction: \" + combinedLen.applyAsInt(\"Hi\", \"There\")); // 7\r\n\r\nIntToLongFunction intToLong = i -> (long) i * 1_000_000;\r\nSystem.out.println(\"IntToLongFunction: \" + intToLong.applyAsLong(5)); // 5000000\r\n\r\nIntToDoubleFunction intToDouble = i -> i / 3.0;\r\nSystem.out.println(\"IntToDoubleFunction: \" + intToDouble.applyAsDouble(10)); // 3.333...\r\n\r\n// --- Long ---\r\nLongFunction<String> longToStr = l -> \"Long: \" + l;\r\nSystem.out.println(\"LongFunction: \" + longToStr.apply(100L));\r\n\r\nLongConsumer longPrint = l -> System.out.println(\"LongConsumer: \" + l);\r\nlongPrint.accept(999L);\r\n\r\nLongSupplier longSupply = System::currentTimeMillis;\r\nSystem.out.println(\"LongSupplier: \" + longSupply.getAsLong());\r\n\r\nLongPredicate isEvenLong = l -> l % 2 == 0;\r\nSystem.out.println(\"LongPredicate: \" + isEvenLong.test(42L)); // true\r\n\r\nLongUnaryOperator doubleLong = l -> l * 2;\r\nSystem.out.println(\"LongUnaryOperator: \" + doubleLong.applyAsLong(50L)); // 100\r\n\r\nLongBinaryOperator longMax = Math::max;\r\nSystem.out.println(\"LongBinaryOperator: \" + longMax.applyAsLong(10L, 20L)); // 20\r\n\r\nToLongFunction<String> hashLong = s -> (long) s.hashCode();\r\nSystem.out.println(\"ToLongFunction: \" + hashLong.applyAsLong(\"test\"));\r\n\r\nToLongBiFunction<String, String> combinedHash = (a, b) -> (long) a.hashCode() + b.hashCode();\r\nSystem.out.println(\"ToLongBiFunction: \" + combinedHash.applyAsLong(\"a\", \"b\"));\r\n\r\nLongToIntFunction longToInt = l -> (int) (l % Integer.MAX_VALUE);\r\nSystem.out.println(\"LongToIntFunction: \" + longToInt.applyAsInt(123456789L));\r\n\r\nLongToDoubleFunction longToDouble = l -> l * 1.5;\r\nSystem.out.println(\"LongToDoubleFunction: \" + longToDouble.applyAsDouble(10L)); // 15.0\r\n\r\n// --- Double ---\r\nDoubleFunction<String> dblToStr = d -> String.format(\"%.2f\", d);\r\nSystem.out.println(\"DoubleFunction: \" + dblToStr.apply(3.14159));\r\n\r\nDoubleConsumer dblPrint = d -> System.out.println(\"DoubleConsumer: \" + d);\r\ndblPrint.accept(2.718);\r\n\r\nDoubleSupplier dblSupply = Math::random;\r\nSystem.out.println(\"DoubleSupplier: \" + dblSupply.getAsDouble());\r\n\r\nDoublePredicate isWhole = d -> d == Math.floor(d);\r\nSystem.out.println(\"DoublePredicate: \" + isWhole.test(5.0)); // true\r\n\r\nDoubleUnaryOperator sqrt = Math::sqrt;\r\nSystem.out.println(\"DoubleUnaryOperator: \" + sqrt.applyAsDouble(16.0)); // 4.0\r\n\r\nDoubleBinaryOperator power = Math::pow;\r\nSystem.out.println(\"DoubleBinaryOperator: \" + power.applyAsDouble(2.0, 10.0)); // 1024.0\r\n\r\nToDoubleFunction<String> parseDouble = Double::parseDouble;\r\nSystem.out.println(\"ToDoubleFunction: \" + parseDouble.applyAsDouble(\"3.14\")); // 3.14\r\n\r\nToDoubleBiFunction<Integer, Integer> avg = (a, b) -> (a + b) / 2.0;\r\nSystem.out.println(\"ToDoubleBiFunction: \" + avg.applyAsDouble(3, 7)); // 5.0\r\n\r\nDoubleToIntFunction truncate = d -> (int) d;\r\nSystem.out.println(\"DoubleToIntFunction: \" + truncate.applyAsInt(9.99)); // 9\r\n\r\nDoubleToLongFunction roundLong = d -> Math.round(d);\r\nSystem.out.println(\"DoubleToLongFunction: \" + roundLong.applyAsLong(9.99)); // 10\r\n\r\n// --- Boolean ---\r\nBooleanSupplier boolSupply = () -> true;\r\nSystem.out.println(\"BooleanSupplier: \" + boolSupply.getAsBoolean());\r\n\r\n// --- Obj+Primitive Consumers ---\r\nObjIntConsumer<String> repeatPrint = (s, n) -> System.out.println(\"ObjIntConsumer: \" + s.repeat(n));\r\nrepeatPrint.accept(\"ab\", 3); // ababab\r\n\r\nObjLongConsumer<String> tagLong = (s, l) -> System.out.println(\"ObjLongConsumer: \" + s + \"=\" + l);\r\ntagLong.accept(\"timestamp\", System.currentTimeMillis());\r\n\r\nObjDoubleConsumer<String> tagDbl = (s, d) -> System.out.println(\"ObjDoubleConsumer: \" + s + \"=\" + d);\r\ntagDbl.accept(\"pi\", 3.14159);",
+      "metadata": {
+        "language": "java",
+        "id": "9573f9ff-d7c2-4d1e-bf2f-7b00fa719b5d",
+        "executionSummary": {
+          "executionOrder": 3,
+          "success": true
+        }
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Function: 5\r\nandThen: 16\r\ncompose: 26\r\nConsumer: Hello\r\nConsumer: chain\r\n!CHAIN!\r\nSupplier: 0.31316465053585774\r\nPredicate: true\r\nand: true\r\nor: true\r\nBiFunction: Hello, World\r\nUnaryOperator: JAVA\r\nBinaryOperator max: 7\r\nBinaryOperator min: 3\r\nBiConsumer: age=25\r\nBiPredicate: true\r\nIntFunction: Number: 42\r\nIntConsumer: 10\r\nIntSupplier: 99\r\nIntPredicate: true\r\nIntUnaryOperator: 36\r\nIntBinaryOperator: 7\r\nToIntFunction: 5\r\nToIntBiFunction: 7\r\nIntToLongFunction: 5000000\r\nIntToDoubleFunction: 3.3333333333333335\r\nLongFunction: Long: 100\r\nLongConsumer: 999\r\nLongSupplier: 1777266425820\r\nLongPredicate: true\r\nLongUnaryOperator: 100\r\nLongBinaryOperator: 20\r\nToLongFunction: 3556498\r\nToLongBiFunction: 195\r\nLongToIntFunction: 123456789\r\nLongToDoubleFunction: 15.0\r\nDoubleFunction: 3.14\r\nDoubleConsumer: 2.718\r\nDoubleSupplier: 0.9952271646553906\r\nDoublePredicate: true\r\nDoubleUnaryOperator: 4.0\r\nDoubleBinaryOperator: 1024.0\r\nToDoubleFunction: 3.14\r\nToDoubleBiFunction: 5.0\r\nDoubleToIntFunction: 9\r\nDoubleToLongFunction: 10\r\nBooleanSupplier: true\r\nObjIntConsumer: ababab\r\nObjLongConsumer: timestamp=1777266426148\r\nObjDoubleConsumer: pi=3.14159\r\n"
+          },
+          "metadata": {},
+          "execution_count": 3
+        }
+      ]
+    },
+    {
+      "id": "6a85299c-e5c3-4049-95e2-ff3d2b4eabf1",
+      "cell_type": "code",
+      "source": "//Method Refernce\r\nimport java.util.function.Predicate;\r\n\r\npublic <T> void checkCriteria(T input, Predicate<T> criteria) {\r\n    if (criteria.test(input)) {\r\n        System.out.println(\"Criteria met for \" + input);\r\n    } else {\r\n        System.out.println(\"Criteria not met for \" + input);\r\n    }\r\n}\r\n\r\n\r\ncheckCriteria(5, n -> n > 3); // Output: Criteria met for 5\r\ncheckCriteria(\"Hello\", String::isEmpty); // Output: Is String empty?\r\n\r\nList<String> names = List.of(\"Alice\", \"Bob\", \"Charlie\");\r\n\r\n\r\nSystem.out.println(\"Names sorted by length:\");\r\n\r\nnames.stream()\r\n     .sorted(Comparator.comparingInt(String::length))\r\n     .forEach(System.out::println); // Output: Bob, Alice, Charlie\r\n\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "5600696f-ccba-4a0e-942c-886ab30545ba",
+      "cell_type": "code",
+      "source": "// Default Methods in Interfaces\r\n\r\n//Inital version of contract\r\ninterface Fan {\r\n\r\n    void turnOn();\r\n\r\n    void turnOff();\r\n\r\n    void setSpeed(int speed);\r\n\r\n    // static void reset() {\r\n    //     this.setSpeed(0);\r\n    //     System.out.println(\"Fan settings reset to default.\");\r\n    // }\r\n\r\n    default void autoMode(int temperature) {\r\n        System.out.println(\"Fan is set to auto mode with temperature \" + temperature);\r\n    }\r\n\r\n}\r\n\r\n//Intial implementation\r\nclass SimpleFan implements Fan {\r\n\r\n    @Override\r\n    public void turnOn() {\r\n        System.out.println(\"Fan is turned on.\");\r\n    }\r\n\r\n    @Override\r\n    public void turnOff() {\r\n        System.out.println(\"Fan is turned off.\");\r\n    }\r\n\r\n    @Override\r\n    public void setSpeed(int speed) {\r\n        System.out.println(\"Fan speed set to \" + speed);\r\n    }\r\n}\r\n\r\n// Fan interface evolve\r\n\r\nFan f = new SimpleFan();\r\nf.turnOn();\r\nf.turnOff();\r\nf.setSpeed(3);\r\n\r\nf.setSpeed(5); // What if we want to set speed to 5? We need to change the interface and all implementations. This is not ideal.\r\nf.turnOff();\r\nf.autoMode(25); // We can add new functionality without breaking existing implementations. This is the power of default methods.\r\n\r\n\r\n    ",
+      "metadata": {
+        "language": "java",
+        "id": "5600696f-ccba-4a0e-942c-886ab30545ba",
+        "executionSummary": {
+          "executionOrder": 7,
+          "success": true
+        }
+      },
+      "execution_count": 7,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Fan is turned on.\r\nFan is turned off.\r\nFan speed set to 3\r\nFan speed set to 5\r\nFan is turned off.\r\nFan is set to auto mode with temperature 25\r\n"
+          },
+          "metadata": {},
+          "execution_count": 7
+        }
+      ]
+    },
+    {
+      "id": "9c548c1b-4bad-4893-a333-f1ebd93affc0",
+      "cell_type": "code",
+      "source": "// Streams -> A new way to process collections of data in a functional style.\r\n// It allows us to perform operations like filtering, mapping, and reducing on collections in a more concise and readable way.\r\n\r\nimport java.util.stream.Collectors;\r\n\r\n\r\n// Before Java 8, we used to process collections using loops and temporary lists.\r\nList<String> words = List.of(\"Hello\", \"World\", \"Java\", \"Streams\", \"ace\", \"balance\");\r\n\r\nList<String> upperCasedWords = new ArrayList<>();\r\n//Convert the words to uppercase and collect them into a new list\r\nfor(int i = 0;i < words.size(); ++i){\r\n    String upperCasedWord = words.get(i).toUpperCase();\r\n    upperCasedWords.add(upperCasedWord);\r\n}\r\n\r\nSystem.out.println(upperCasedWords); // Output: [HELLO, WORLD, JAVA, STREAMS]\r\n\r\n//After java 8\r\n\r\n// Using for ecach loop\r\n\r\nSystem.out.println(\"*****Using for-each loop******\");\r\n\r\n// Since Java 5\r\nList<String> forEachUpperCasedWords = new ArrayList<>();\r\n\r\nfor(String word : words){\r\n    String upperCasedWord = word.toUpperCase();\r\n    forEachUpperCasedWords.add(upperCasedWord);\r\n}\r\n\r\nwords.forEach(word -> forEachUpperCasedWords.add(word.toUpperCase())); //side effect in forEach, not recommended\r\nSystem.out.println(forEachUpperCasedWords); // Output: [HELLO, WORLD, JAVA, STREAMS]\r\n\r\n// Using Streams\r\n\r\nSystem.out.println(\"*****[Map & Mutable Reduction] Using Streams******\");\r\n\r\n\r\nList<String> streamUpperCasedWords = words.stream()\r\n     .map(String::toUpperCase)                  // Convert each word to uppercase\r\n     .collect(Collectors.toList());             // Collect the uppercase words into a list\r\nSystem.out.println(streamUpperCasedWords);      // Output: [HELLO, WORLD, JAVA, STREAMS]\r\n\r\n\r\nSystem.out.println(\"*****[Filtering & Mutable Reduction] Atleast 5 Characters Words******\");\r\n\r\nList<String> atleastCharacterWords = words.stream()\r\n     .filter(word -> word.length() >= 5)    // Filter words with length >= 5\r\n     .collect(Collectors.toList());         // Collect the filtered words into a list\r\nSystem.out.println(atleastCharacterWords); // Output: [Hello, World, Streams]\r\n\r\nSystem.out.println(\"*****[Sorting - Stateful] Sort Words by Length******\");\r\n\r\n// Using Streams to find the longest word\r\n\r\nList<String> longestWords = words.stream()\r\n     .collect(Collectors.groupingBy(String::length)) // Group words by their length\r\n     .entrySet().stream()                          // Convert the map to a stream of entries\r\n     .sorted(Map.Entry.<Integer, List<String>>comparingByKey().reversed()) // Sort entries by key (length) in descending order\r\n     .findFirst()                                  // Get the entry with the longest length\r\n     .map(Map.Entry::getValue)                     // Get the list of words with the longest length\r\n     .orElse(List.of());                          // Return an empty list if no words are found\r\n\r\nSystem.out.println(\"Longest words are \" + longestWords); // Output: Longest words are [Streams]\r\n\r\n// Average length of words\r\nSystem.out.println(\"*****[Reduction] Average Length ******\");\r\n\r\n\r\ndouble averageLength = words.stream()\r\n     .mapToInt(String::length)                 // Convert each word to its length\r\n     .average()                                // Calculate the average length\r\n     .orElse(0);                               // Return 0 if the stream is empty\r\n\r\nSystem.out.println(\"Average length of words is \" + averageLength); // Output: Average length of words is 5.166666666666667\r\n\r\n// Mention parallel stream\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "a10a628b-50ab-466c-ba4b-c69e5ade7afb",
+      "cell_type": "code",
+      "source": "import java.util.function.*;\r\n\r\n// Method Reference Types\r\n\r\nimport java.util.stream.Collectors;\r\n\r\n// 1. Static Method Reference (ClassName::staticMethod)\r\nFunction<String, Integer> parseInt = Integer::parseInt;\r\nSystem.out.println(\"Static: \" + parseInt.apply(\"42\")); // 42\r\n\r\n// 2. Instance Method Reference on a particular object (instance::method)\r\nString greeting = \"Hello, World!\";\r\nSupplier<String> toUpper = greeting::toUpperCase;\r\nSystem.out.println(\"Instance: \" + toUpper.get()); // HELLO, WORLD!\r\n\r\n// 3. Instance Method Reference on an arbitrary object of a type (ClassName::instanceMethod)\r\nFunction<String, String> toLowerCase = String::toLowerCase;\r\nSystem.out.println(\"Class Name Instance: \" + toLowerCase.apply(\"JAVA\")); // java\r\n\r\nBiPredicate<String, String> startsWith = String::startsWith;\r\nSystem.out.println(\"StartsWith: \" + startsWith.test(\"Java\", \"Ja\")); // true\r\n\r\n// 4. Constructor Reference (ClassName::new)\r\nFunction<String, StringBuilder> sbCreator = StringBuilder::new;\r\nStringBuilder sb = sbCreator.apply(\"Built via constructor ref\");\r\nSystem.out.println(\"Constructor: \" + sb);\r\n\r\nSupplier<ArrayList<String>> listFactory = ArrayList::new;\r\nArrayList<String> newList = listFactory.get();\r\nnewList.add(\"Created!\");\r\nSystem.out.println(\"Constructor (no-arg): \" + newList);\r\n\r\n// Practical example combining all types\r\nList<String> items = List.of(\"3\", \"1\", \"4\", \"1\", \"5\");\r\n\r\nList<Integer> parsed = items.stream()\r\n    .map(Integer::parseInt)          // static method ref\r\n    .sorted(Integer::compareTo)      // class name instance method ref\r\n    .collect(Collectors.toList());\r\n\r\nSystem.out.println(\"Combined: \" + parsed); // [1, 1, 3, 4, 5]",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "765364e5-8a1d-41ec-b903-081d0cee4fac",
+      "cell_type": "code",
+      "source": "// Type inference\r\n\r\n// In Java 7, diamond operator was introduced to simplify the instantiation of generic types. \r\n//However, it had limitations in certain contexts, such as when using the addAll method with collections.\r\n\r\nList<String> stringList = new ArrayList<>(); // diamond operator allows to avoid redundant type specification\r\n\r\n/**Limitation **/\r\n// In Java 7 addAll method will throw error because it cannot infer the type of the collection.Unless specified as below\r\nList<String> stringList = new ArrayList<>();\r\nstringList.add(\"A\");\r\nstringList.addAll(Arrays.<String>asList(\"a\", \"b\", \"c\"));\r\n\r\n//In Java 8, it can infer the type and will work fine.\r\nList<String> stringList = new ArrayList<>();\r\nstringList.add(\"A\");\r\nstringList.addAll(Arrays.asList(\"a\", \"b\", \"c\"));\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "7a3ca025-0149-41b1-a1e6-2595ef19c8d4",
+      "cell_type": "code",
+      "source": "// Before java 7 annotation's ElementType\r\n\r\nimport java.lang.annotation.*;\r\n\r\n@Target({\r\n    ElementType.TYPE,\r\n    ElementType.METHOD, \r\n    ElementType.FIELD, \r\n    ElementType.PARAMETER, \r\n    ElementType.CONSTRUCTOR, \r\n    ElementType.LOCAL_VARIABLE, \r\n    ElementType.ANNOTATION_TYPE, \r\n    })\r\n@Retention(RetentionPolicy.RUNTIME)\r\n\r\n\r\n\r\npublic @interface BeforeJava8Annotation {\r\n    String value();\r\n}\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "906b1a00-eed1-49fd-9178-1f876fd4de87",
+      "cell_type": "code",
+      "source": "@Target(ElementType.PACKAGE) // Available in java 7 as well\r\n@Retention(RetentionPolicy.RUNTIME)\r\n@interface PackageInfo {\r\n    String author();\r\n    String version();\r\n}\r\n\r\n\r\n@PackageInfo(\r\n    author = \"Joji Joy\",\r\n    version = \"1.0\"\r\n)\r\npackage com.example.myapp;\r\n\r\n\r\nPackage pkg = Package.getPackage(\"com.example.myapp\");\r\nPackageInfo info = pkg.getAnnotation(PackageInfo.class);\r\n\r\nSystem.out.println(info.author());\r\nSystem.out.println(info.version());",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "34c67d16-3ce7-45f1-a53c-3b060da44d06",
+      "cell_type": "code",
+      "source": "// Annotations\r\n\r\n// Before Java 8, we could not use annotations on types.\r\n\r\n\r\n@BeforeJava8Annotation(\"This is a class\") // Type\r\nclass MyClass {\r\n\r\n    @BeforeJava8Annotation(\"This is a field\") // Field\r\n    private String myField;\r\n\r\n    @BeforeJava8Annotation(\"This is a constructor\") //Constructor\r\n    public MyClass() {\r\n    }\r\n\r\n    @BeforeJava8Annotation(\"This is a method\")\r\n    public void myMethod(@BeforeJava8Annotation(\"This is a parameter\") String param) {\r\n        @BeforeJava8Annotation(\"This is a local variable\")\r\n        String localVar = \"Hello\";\r\n        System.out.println(localVar);\r\n    }\r\n}\r\n\r\nMyClass myClass = new MyClass();\r\nmyClass.myMethod(\"Test\");",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "ef72394b-635e-4318-bb33-4d5ffcd999e5",
+      "cell_type": "code",
+      "source": "// After java 8 annotation's ElementType\r\n\r\nimport java.lang.annotation.*;\r\n\r\n@Target(ElementType.TYPE_USE)\r\n@Retention(RetentionPolicy.RUNTIME)\r\n@interface NonNull {}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0d49384f-d0f8-40e8-8d9e-8513371105b0",
+      "cell_type": "code",
+      "source": "// Variable annotations\r\n\r\n@NonNull String name = \"Joji\";\r\n\r\n// Generic type annotations\r\n\r\nList<@NonNull String> names = new ArrayList<>(); // Useful for static analysis tools to check for nullability of elements in the list\r\n\r\n//Return Types\r\npublic @NonNull String getName() {\r\n    return \"Joji\";\r\n}\r\n\r\n//Casts\r\n\r\nObject obj = null;\r\nString str = (@NonNull String) obj;\r\n\r\nabstract class Printer<T> {\r\n\r\n    List<T> list = new ArrayList<>();\r\n    public abstract void print();\r\n\r\n\r\n    public void add(@NonNull T element) {\r\n        list.add(element);\r\n    }\r\n}\r\n\r\nclass PrettyPrinter extends Printer<@NonNull String> {\r\n\r\n    @Override\r\n    public void print() {\r\n        for(String element : list) {\r\n            System.out.println(\"*\".repeat(2) + element + \"*\".repeat(2));\r\n        }\r\n    }\r\n}\r\n\r\nPrettyPrinter printer = new PrettyPrinter();\r\nprinter.add(\"Hello\");\r\nprinter.print();\r\n\r\n\r\nvoid process() throws @NonNull IOException { //static analyser highlights or flags any place that may lead to throw null ;\r\n    PrettyPrinter printer = new PrettyPrinter();\r\n    printer.add(\"Printer\");\r\n    printer.add(null); // static analyser will flag this as potential null assignment\r\n    printer.print();\r\n} \r\n\r\nprocess();\r\n\r\n@NonNull String[] arr; // arr = null; // static analyser will flag this as potential null assignment\r\nString @NonNull [] arr2; //arr2 = null; // static analyser will flag this as potential null assignmen\r\n\r\n\r\n//ensures matrix[row] is not null, but matrix[row][col] can be null. \r\n// Useful for static analysis to ensure that the outer array is not null, while allowing inner elements to be null if necessary.\r\n\r\nString @NonNull [][] matrix;\r\n\r\n// ensures type system highlights that matrix = null.\r\n@NonNull String[][] matrix; \r\n\r\n// ensures both matrix and its elements are non-null. \r\n//Static analysis will flag any assignment of null to matrix or its elements.\r\n@NonNull String @NonNull [][] matrix; \r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "ddacd26b-b42c-49ce-9e73-e51a8b6f2386",
+      "cell_type": "code",
+      "source": "@Target(ElementType.TYPE_PARAMETER)\r\n@interface TypeInfo {}\r\n\r\nclass Box<@TypeInfo T> {\r\n    T value;\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "037a47a1-a30c-4750-b7de-9b68784650ac",
+      "cell_type": "code",
+      "source": "import java.lang.annotation.*;\r\n\r\n@Repeatable(Roles.class) //Added in java 8 to allow multiple @Role annotations on the same element\r\n@Target(ElementType.TYPE)\r\n@interface Role {\r\n    String value();\r\n}\r\n\r\n@Target(ElementType.TYPE)\r\n@interface Roles {\r\n    Role[] value();\r\n}\r\n\r\n@Role(\"ADMIN\")\r\n@Role(\"USER\")\r\nclass AccountService {}\r\n\r\n// @Roles({@Role(\"ADMIN\"), @Role(\"USER\")})",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "6d2360ca-efe6-43ef-997e-ac1ecbbe0281",
+      "cell_type": "code",
+      "source": "//Spliterator\r\n\r\n\r\n\r\n<T> List<String> mapCharacteristics(Collection<T> collection) {\r\n    return List.of(\"ORDERED: \" + collection.spliterator().hasCharacteristics(Spliterator.ORDERED),\r\n                   \"DISTINCT: \" + collection.spliterator().hasCharacteristics(Spliterator.DISTINCT),\r\n                   \"SORTED: \" + collection.spliterator().hasCharacteristics(Spliterator.SORTED),\r\n                   \"SIZED: \" + collection.spliterator().hasCharacteristics(Spliterator.SIZED),\r\n                   \"NONNULL: \" + collection.spliterator().hasCharacteristics(Spliterator.NONNULL),\r\n                   \"IMMUTABLE: \" + collection.spliterator().hasCharacteristics(Spliterator.IMMUTABLE),\r\n                   \"CONCURRENT: \" + collection.spliterator().hasCharacteristics(Spliterator.CONCURRENT),\r\n                   \"SUBSIZED: \" + collection.spliterator().hasCharacteristics(Spliterator.SUBSIZED));\r\n }\r\n\r\nList<String> list = List.of(\"A\", \"B\", \"C\", \"D\", \"E\");\r\nSystem.out.println(list.spliterator().characteristics());\r\nSystem.out.println(mapCharacteristics(list));\r\n\r\n\r\nSet<String> set = Set.of(\"A\", \"B\", \"C\", \"D\", \"E\");\r\nSystem.out.println(set.spliterator().characteristics());\r\nSystem.out.println(mapCharacteristics(set));\r\n\r\n//List Operations\r\n\r\nSystem.out.println(\"*****[List Operations] Spliterator******\");\r\n\r\nSystem.out.println(\"Bulk Element processing:\");\r\n\r\nlist.spliterator().forEachRemaining(System.out::println); // bulk processing, will throw ConcurrentModificationException if list is modified during processing, after bulk processing, spliterator is exhausted and cannot be used again.\r\n\r\nSystem.out.println(\"Single element processing:\");\r\n\r\nlist.spliterator().tryAdvance(System.out::println); // single element processing\r\n//\r\nSpliterator<String> spliterator = list.spliterator();\r\nSpliterator<String> split = spliterator.trySplit(); // split the spliterator into two parts for parallel processing\r\n\r\nSystem.out.println(\"Original spliterator:\");\r\nspliterator.forEachRemaining(System.out::println); // process remaining elements in the original spliterator\r\n\r\nSystem.out.println(\"Split part:\");\r\nsplit.forEachRemaining(System.out::println); // process elements in the split spliterator",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "2172362d-48bd-4545-a370-20c38740e6c7",
+      "cell_type": "markdown",
+      "source": "## Completable Future\r\n\r\n| Category      | Methods                                                                 |\r\n|---------------|-------------------------------------------------------------------------|\r\n| Create        | `supplyAsync`, `runAsync`, `completedFuture`                             |\r\n| Transform     | `thenApply`, `thenApplyAsync`                                            |\r\n| Consume       | `thenAccept`, `thenRun`                                                  |\r\n| Compose       | `thenCompose` (flatMap — avoids nested futures)                          |\r\n| Combine       | `thenCombine` (merges two independent futures)                           |\r\n| Either        | `acceptEither`, `applyToEither` (first to complete wins)                 |\r\n| All / Any     | `allOf` (wait for all), `anyOf` (wait for first)                         |\r\n| Error         | `exceptionally`, `handle`, `whenComplete`                                |\r\n| Timeout       | `orTimeout`, `completeOnTimeout` (Java 9+)                               |\r\n\r\n ",
+      "metadata": {
+        "language": "markdown",
+        "id": "2172362d-48bd-4545-a370-20c38740e6c7"
+      }
+    },
+    {
+      "id": "e31a12b8-de66-4329-92bb-1ddc34736fa2",
+      "cell_type": "code",
+      "source": "static void sleep(long millis) {\r\n    try {\r\n        Thread.sleep(millis);\r\n    } catch (InterruptedException e) {\r\n        Thread.currentThread().interrupt();\r\n        throw new RuntimeException(e);\r\n    }\r\n}",
+      "metadata": {
+        "language": "java",
+        "id": "e31a12b8-de66-4329-92bb-1ddc34736fa2",
+        "executionSummary": {
+          "executionOrder": 1,
+          "success": true
+        }
+      },
+      "execution_count": 1,
+      "outputs": []
+    },
+    {
+      "id": "7a005142-c204-4b6b-b6db-f179910b25e5",
+      "cell_type": "code",
+      "source": "// Completeable Future\r\nimport java.util.concurrent.CompletableFuture;\r\nimport java.util.concurrent.TimeUnit;\r\n\r\npublic CompletableFuture<String> supplyAsync() {\r\n    return CompletableFuture.supplyAsync(() -> {\r\n        sleep(100);\r\n        return \"Hello from supplyAsync\";\r\n    });\r\n}\r\n\r\n\r\n\r\nSystem.out.println(supplyAsync().get()); // Output: Hello from supplyAsync",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "8da59f63-8682-4c90-906e-9dae3ac07f9a",
+      "cell_type": "code",
+      "source": "\r\n/** runAsync — runs a Runnable asynchronously, returns CompletableFuture<Void>. */\r\npublic CompletableFuture<Void> runAsync() {\r\n    return CompletableFuture.runAsync(() -> {\r\n        sleep(100);\r\n        System.out.println(\"Side-effect from runAsync\");\r\n    });\r\n}\r\n\r\nrunAsync().join(); // Output: Side-effect from runAsync\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "505336a0-eba0-4037-a506-0b42bc14e903",
+      "cell_type": "code",
+      "source": "\r\n/** completedFuture — creates an already-completed future. Useful for testing or default values. */\r\npublic CompletableFuture<String> completedFuture(String value) {\r\n    return CompletableFuture.completedFuture(value);\r\n}\r\ncompletedFuture(\"Already completed\")\r\n.thenAccept(System.out::println); // Output: Already completed\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0f6227bc-a20b-4935-b371-7fafcaa9ad55",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 2. thenApply — Transform the result (like map) =====================\r\n\r\n/**\r\n * thenApply chains a Function that transforms the result.\r\n * Stage: supplyAsync(\"hello\") → thenApply(toUpperCase) → \"HELLO\"\r\n *\r\n * Runs on the same thread that completed the previous stage (or the caller if already done).\r\n */\r\npublic CompletableFuture<String> thenApplyExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> \"hello\")\r\n            .thenApply(String::toUpperCase)       // \"hello\" → \"HELLO\"\r\n            .thenApply(s -> s + \" WORLD\");        // \"HELLO\" → \"HELLO WORLD\"\r\n}\r\nSystem.out.println(thenApplyExample().get()); // Output: HELLO WORLD\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "e7c0955b-3e25-42bb-9e7c-b4a8977b7a8d",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * thenApplyAsync — same as thenApply but the function runs on a different thread\r\n * from the ForkJoinPool (or a custom Executor).\r\n */\r\npublic CompletableFuture<Integer> thenApplyAsyncExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> \"12345\")\r\n            .thenApplyAsync(String::length);      // runs on a pool thread\r\n}\r\nSystem.out.println(thenApplyAsyncExample().get()); // Output: 5",
+      "metadata": {
+        "language": "java",
+        "id": "e7c0955b-3e25-42bb-9e7c-b4a8977b7a8d",
+        "executionSummary": {
+          "executionOrder": 5,
+          "success": true
+        }
+      },
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "5\r\n"
+          },
+          "metadata": {},
+          "execution_count": 5
+        }
+      ]
+    },
+    {
+      "id": "ea784c9f-e683-4f2d-ad36-282016408495",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 3. thenAccept / thenRun — Consume the result =====================\r\nimport java.util.concurrent.CompletableFuture;\r\n\r\n/**\r\n * thenAccept — consumes the result (returns Void). Use for side effects like logging.\r\n */\r\npublic CompletableFuture<Void> thenAcceptExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> \"result\")\r\n            .thenAccept(result -> System.out.println(\"Got: \" + result));\r\n}\r\nthenAcceptExample().join(); // Output: Got: result\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "ea784c9f-e683-4f2d-ad36-282016408495",
+        "executionSummary": {
+          "executionOrder": 3,
+          "success": true
+        }
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Got: result\r\n"
+          },
+          "metadata": {},
+          "execution_count": 3
+        }
+      ]
+    },
+    {
+      "id": "2a3652fd-6b44-4ee9-bf4e-dd162c9200b3",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * thenRun — runs a Runnable after the previous stage completes. Does NOT receive the result.\r\n */\r\npublic CompletableFuture<Void> thenRunExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> \"ignored\")\r\n            .thenRun(() -> System.out.println(\"Previous stage done, running cleanup\"));\r\n}\r\n\r\nthenRunExample().join(); // Output: Previous stage done, running cleanup",
+      "metadata": {
+        "language": "java",
+        "id": "2a3652fd-6b44-4ee9-bf4e-dd162c9200b3",
+        "executionSummary": {
+          "executionOrder": 4,
+          "success": true
+        }
+      },
+      "execution_count": 4,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Previous stage done, running cleanup\r\n"
+          },
+          "metadata": {},
+          "execution_count": 4
+        }
+      ]
+    },
+    {
+      "id": "1968b328-0902-4de8-bcc2-95de2a94a1cc",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 4. thenCompose — Flatten nested futures (like flatMap) =====================\r\n\r\n/**\r\n * thenCompose avoids CompletableFuture<CompletableFuture<T>> nesting.\r\n * <p>\r\n * Without compose: supplyAsync().thenApply(fetchDetails) → CompletableFuture<CompletableFuture<String>>\r\n * With compose:    supplyAsync().thenCompose(fetchDetails) → CompletableFuture<String>\r\n * <p>\r\n * Use case: when the transformation itself returns a CompletableFuture (e.g., another async call).\r\n */\r\n\r\n/** Simulates an async database/service call. */\r\n\r\nimport java.util.concurrent.CompletableFuture;\r\n\r\nprivate CompletableFuture<String> fetchUserName(int userId) {\r\n    return CompletableFuture.supplyAsync(() -> {\r\n        sleep(50);\r\n        return \"User-\" + userId;\r\n    });\r\n}\r\n\r\npublic CompletableFuture<String> thenComposeExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> 42)                           // Stage 1: get user ID\r\n            .thenCompose(userId -> fetchUserName(userId));   // Stage 2: async lookup by ID\r\n}\r\n\r\n\r\nSystem.out.println(thenComposeExample().get()); // Output: User-42\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "1968b328-0902-4de8-bcc2-95de2a94a1cc",
+        "executionSummary": {
+          "executionOrder": 12,
+          "success": true
+        }
+      },
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "User-42\r\n"
+          },
+          "metadata": {},
+          "execution_count": 12
+        }
+      ]
+    },
+    {
+      "id": "6a8b901d-6395-48b7-8f46-0795fd82e8f3",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 5. thenCombine — Merge two independent futures =====================\r\n\r\n/**\r\n * thenCombine runs two independent futures in parallel and combines their results\r\n * when BOTH complete.\r\n * <p>\r\n * Use case: fetch price from service A and discount from service B, then compute final price.\r\n */\r\npublic CompletableFuture<String> thenCombineExample() {\r\n    CompletableFuture<String> future1 = CompletableFuture.supplyAsync(() -> {\r\n        sleep(100);\r\n        return \"Hello\";\r\n    });\r\n\r\n    CompletableFuture<String> future2 = CompletableFuture.supplyAsync(() -> {\r\n        sleep(80);\r\n        return \"World\";\r\n    });\r\n\r\n    // Both run concurrently; combine once both are done\r\n    return future1.thenCombine(future2, (r1, r2) -> r1 + \" \" + r2);\r\n}\r\n\r\nSystem.out.println(thenCombineExample().get()); // Output: Hello World\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "6a8b901d-6395-48b7-8f46-0795fd82e8f3",
+        "executionSummary": {
+          "executionOrder": 13,
+          "success": true
+        }
+      },
+      "execution_count": 13,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Hello World\r\n"
+          },
+          "metadata": {},
+          "execution_count": 13
+        }
+      ]
+    },
+    {
+      "id": "650bfbc5-c96a-415d-8f2b-f0f9bded6253",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * Practical example: computing a final price from two independent async lookups.\r\n */\r\npublic CompletableFuture<Double> thenCombinePriceExample() {\r\n    CompletableFuture<Double> priceFuture = CompletableFuture.supplyAsync(() -> {\r\n        sleep(100);\r\n        return 100.0;       // base price from pricing service\r\n    });\r\n\r\n    CompletableFuture<Double> discountFuture = CompletableFuture.supplyAsync(() -> {\r\n        sleep(80);\r\n        return 0.15;        // 15% discount from discount service\r\n    });\r\n\r\n    return priceFuture.thenCombine(discountFuture,\r\n            (price, discount) -> price * (1 - discount));   // 100 * 0.85 = 85.0\r\n}\r\n\r\nSystem.out.println(thenCombinePriceExample().get()); // Output: 85.0\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "650bfbc5-c96a-415d-8f2b-f0f9bded6253",
+        "executionSummary": {
+          "executionOrder": 14,
+          "success": true
+        }
+      },
+      "execution_count": 14,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "85.0\r\n"
+          },
+          "metadata": {},
+          "execution_count": 14
+        }
+      ]
+    },
+    {
+      "id": "19136179-ef4d-45c3-a211-83ec6d69cc21",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 6. acceptEither / applyToEither — First to complete wins =====================\r\n\r\n/**\r\n * applyToEither — applies the function to whichever future completes first.\r\n * Use case: querying two replicas and using the faster response.\r\n */\r\npublic CompletableFuture<String> applyToEitherExample() {\r\n    CompletableFuture<String> fast = CompletableFuture.supplyAsync(() -> {\r\n        sleep(50);\r\n        return \"fast-server\";\r\n    });\r\n\r\n    CompletableFuture<String> slow = CompletableFuture.supplyAsync(() -> {\r\n        sleep(200);\r\n        return \"slow-server\";\r\n    });\r\n\r\n    return fast.applyToEither(slow, result -> \"Winner: \" + result);\r\n}\r\n\r\napplyToEitherExample().thenAccept(System.out::println).join(); // Output: Winner: fast-server\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "19136179-ef4d-45c3-a211-83ec6d69cc21",
+        "executionSummary": {
+          "executionOrder": 15,
+          "success": true
+        }
+      },
+      "execution_count": 15,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Winner: fast-server\r\n"
+          },
+          "metadata": {},
+          "execution_count": 15
+        }
+      ]
+    },
+    {
+      "id": "d07413a2-28ba-4e93-8343-0e8d2dceebd8",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 7. allOf — Wait for ALL futures to complete =====================\r\n\r\n/**\r\n * allOf returns CompletableFuture&lt;Void&gt; that completes when ALL supplied futures complete.\r\n * You then manually collect the results from each future.\r\n * <p>\r\n * Use case: parallel fetching of multiple resources, then aggregating results.\r\n */\r\n\r\nimport java.util.List;\r\nimport java.util.concurrent.CompletableFuture;\r\nimport java.util.stream.Collectors;\r\n\r\npublic CompletableFuture<List<String>> allOfExample() {\r\n    List<CompletableFuture<String>> futures = List.of(\r\n            CompletableFuture.supplyAsync(() -> { sleep(100); return \"A\"; }),\r\n            CompletableFuture.supplyAsync(() -> { sleep(80);  return \"B\"; }),\r\n            CompletableFuture.supplyAsync(() -> { sleep(60);  return \"C\"; })\r\n    );\r\n\r\n    // Wait for all, then collect results\r\n    return CompletableFuture\r\n            .allOf(futures.toArray(new CompletableFuture[0]))\r\n            .thenApply(v -> futures.stream()\r\n                    .map(CompletableFuture::join)   // safe — all are already complete\r\n                    .collect(Collectors.toList()));\r\n}\r\n\r\nSystem.out.println(allOfExample().get()); // Output: [A, B, C]\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "d07413a2-28ba-4e93-8343-0e8d2dceebd8",
+        "executionSummary": {
+          "executionOrder": 18,
+          "success": true
+        }
+      },
+      "execution_count": 18,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "[A, B, C]\r\n"
+          },
+          "metadata": {},
+          "execution_count": 18
+        }
+      ]
+    },
+    {
+      "id": "0274d1f3-ff4f-4468-bf4e-299988afec11",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 8. anyOf — Wait for the FIRST future to complete =====================\r\n\r\n/**\r\n * anyOf returns CompletableFuture&lt;Object&gt; that completes as soon as ANY supplied future completes.\r\n * The result is the value of the first future to finish.\r\n */\r\npublic CompletableFuture<Object> anyOfExample() {\r\n    CompletableFuture<String> f1 = CompletableFuture.supplyAsync(() -> { sleep(200); return \"Slow\"; });\r\n    CompletableFuture<String> f2 = CompletableFuture.supplyAsync(() -> { sleep(50);  return \"Fast\"; });\r\n    CompletableFuture<String> f3 = CompletableFuture.supplyAsync(() -> { sleep(150); return \"Medium\"; });\r\n\r\n    return CompletableFuture.anyOf(f1, f2, f3);\r\n}\r\n\r\nSystem.out.println(anyOfExample().get()); // Output: Fast (the first to complete)\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "0274d1f3-ff4f-4468-bf4e-299988afec11",
+        "executionSummary": {
+          "executionOrder": 19,
+          "success": true
+        }
+      },
+      "execution_count": 19,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Fast\r\n"
+          },
+          "metadata": {},
+          "execution_count": 19
+        }
+      ]
+    },
+    {
+      "id": "1b9bd493-f06e-4fd9-babd-372547f58572",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 9. Error Handling =====================\r\n\r\n/**\r\n * exceptionally — recovers from an exception by providing a fallback value.\r\n * Only invoked if the previous stage completed exceptionally.\r\n */\r\npublic CompletableFuture<String> exceptionallyExample(boolean shouldFail) {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> {\r\n                if (shouldFail) throw new RuntimeException(\"Boom!\");\r\n                return \"Success\";\r\n            })\r\n            .exceptionally(ex -> \"Recovered from: \" + ex.getMessage())\r\n            .thenApply(String::toUpperCase);\r\n        \r\n}\r\n\r\nexceptionallyExample(true).thenAccept(System.out::println).join();  // Output: Recovered from: Boom!\r\nexceptionallyExample(false).thenAccept(System.out::println).join(); // Output: Success\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "1b9bd493-f06e-4fd9-babd-372547f58572",
+        "executionSummary": {
+          "executionOrder": 21,
+          "success": true
+        }
+      },
+      "execution_count": 21,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "RECOVERED FROM: JAVA.LANG.RUNTIMEEXCEPTION: BOOM!\r\nSUCCESS\r\n"
+          },
+          "metadata": {},
+          "execution_count": 21
+        }
+      ]
+    },
+    {
+      "id": "05f9ff98-83c7-4868-a646-b5f74d615072",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * handle — processes BOTH success and failure in a single callback.\r\n * Always invoked regardless of whether the previous stage succeeded or failed.\r\n * <p>\r\n * Difference from exceptionally:\r\n * - exceptionally: only called on failure, receives Throwable\r\n * - handle: always called, receives (result, exception) — one will be null\r\n */\r\npublic CompletableFuture<String> handleExample(boolean shouldFail) {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> {\r\n                if (shouldFail) throw new RuntimeException(\"Oops!\");\r\n                return \"OK\";\r\n            })\r\n            .handle((result, ex) -> {\r\n                if (ex != null) {\r\n                    return \"Handled error: \" + ex.getMessage();\r\n                }\r\n                return \"Handled success: \" + result;\r\n            });\r\n}\r\n\r\nhandleExample(true).thenAccept(System.out::println).join();  // Output: Handled error: Oops!\r\nhandleExample(false).thenAccept(System.out::println).join(); // Output: Handled success\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "05f9ff98-83c7-4868-a646-b5f74d615072",
+        "executionSummary": {
+          "executionOrder": 22,
+          "success": true
+        }
+      },
+      "execution_count": 22,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Handled error: java.lang.RuntimeException: Oops!\r\nHandled success: OK\r\n"
+          },
+          "metadata": {},
+          "execution_count": 22
+        }
+      ]
+    },
+    {
+      "id": "e9898c85-6113-4f9e-9de5-5bef8cd010cb",
+      "cell_type": "code",
+      "source": "\r\n/**\r\n * whenComplete — like handle, but does NOT transform the result.\r\n * Used for side-effects (logging, metrics) without changing the pipeline value.\r\n * If the original future failed, it stays failed after whenComplete.\r\n */\r\n\r\npublic CompletableFuture<String> whenCompleteExample() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> { return \"data\"; })\r\n            //.<String>supplyAsync(() -> { throw new RuntimeException(\"Error in supplyAsync\"); })\r\n            .whenComplete((result, ex) -> {\r\n                if (ex != null) {\r\n                    System.out.println(\"Logging error: \" + ex.getMessage());\r\n                } else {\r\n                    System.out.println(\"Logging result: \" + result);\r\n                }\r\n            });\r\n}\r\n\r\nwhenCompleteExample().thenAccept(System.out::println); // Output: Logging result: data",
+      "metadata": {
+        "language": "java",
+        "id": "e9898c85-6113-4f9e-9de5-5bef8cd010cb",
+        "executionSummary": {
+          "executionOrder": 23,
+          "success": true
+        }
+      },
+      "execution_count": 23,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Logging result: data\r\ndata\r\n"
+          },
+          "metadata": {},
+          "execution_count": 23
+        }
+      ]
+    },
+    {
+      "id": "8a2ae510-8381-473e-ae56-98720c8f7632",
+      "cell_type": "code",
+      "source": "\r\n// ===================== 11. Chaining multiple stages — real-world pipeline =====================\r\n\r\n/**\r\n * A realistic pipeline combining multiple operations:\r\n * <pre>\r\n * fetchOrderId()                          → supplyAsync\r\n *   .thenCompose(fetchOrderDetails)       → async DB lookup (flatMap)\r\n *   .thenCombine(fetchExchangeRate)       → parallel lookup, combine\r\n *   .thenApply(formatResult)              → transform\r\n *   .exceptionally(fallback)              → error recovery\r\n * </pre>\r\n */\r\n\r\nimport java.util.concurrent.CompletableFuture;\r\n\r\npublic CompletableFuture<String> realisticPipeline() {\r\n    return CompletableFuture\r\n            .supplyAsync(() -> {\r\n                sleep(50);\r\n                throw new RuntimeException(\"Step 1:Failed to fetch order ID\"); // Simulate failure\r\n                // return 1001;    // Step 1: get order ID\r\n            })\r\n            .exceptionally(ex -> {\r\n                System.out.println(\"Pipeline failed during order ID fetch: \" + ex.getMessage());\r\n                return \"-1\"; // fallback order ID\r\n            })\r\n            .thenCompose(orderId -> CompletableFuture.supplyAsync(() -> {\r\n                sleep(50);\r\n                System.out.println(\"Step 2: Fetched order ID \" + orderId);\r\n                throw new RuntimeException(\"Step 2:Failed to fetch order details\"); // Simulate failure\r\n                // return \"Order#\" + orderId + \" total=$100\";   // Step 2: fetch order details\r\n            }))\r\n            .exceptionally(ex -> \"Pipeline failed during order details fetch: \" + ex.getMessage()) // Handle exceptions from compose\r\n            .thenCombine(\r\n                    CompletableFuture.supplyAsync(() -> {\r\n                        sleep(30);\r\n                        return 0.85;                          // Step 3: fetch USD→EUR rate\r\n                    }),\r\n                    (orderDetails, rate) -> orderDetails + \" (EUR: €\" + (100 * rate) + \")\"   // Step 4: combine\r\n            )\r\n            .exceptionally(ex -> \"Pipeline failed during processing: \" + ex.getMessage()) // Handle any exceptions from compose/combine\r\n            .thenApply(String::toUpperCase)                   // Step 5: format\r\n            .exceptionally(ex -> \"Pipeline failed: \" + ex.getMessage());  // Step 6: fallback\r\n}\r\n\r\nSystem.out.print(realisticPipeline().get()); // Output: ORDER#1001 TOTAL=$100 (EUR: €85.0)\r\n",
+      "metadata": {
+        "language": "java",
+        "id": "8a2ae510-8381-473e-ae56-98720c8f7632",
+        "executionSummary": {
+          "executionOrder": 44,
+          "success": true
+        }
+      },
+      "execution_count": 44,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "Pipeline failed during order ID fetch: java.lang.RuntimeException: Step 1:Failed to fetch order ID\r\nStep 2: Fetched order ID -1\r\nPIPELINE FAILED DURING ORDER DETAILS FETCH: JAVA.LANG.RUNTIMEEXCEPTION: STEP 2:FAILED TO FETCH ORDER DETAILS (EUR: �85.0)"
+          },
+          "metadata": {},
+          "execution_count": 44
+        }
+      ]
+    },
+    {
+      "id": "f28045f8-2f1b-41f7-abdd-796ef6fd6ad1",
+      "cell_type": "code",
+      "source": "import java.util.*;\r\nimport java.util.stream.*;\r\n\r\n// ===================== Map new methods =====================\r\nSystem.out.println(\"===== Map Methods =====\");\r\n\r\nMap<String, Integer> map = new HashMap<>(Map.of(\"a\", 1, \"b\", 2, \"c\", 3));\r\n\r\nSystem.out.println(\"getOrDefault: \" + map.getOrDefault(\"z\", 99)); // 99\r\nmap.putIfAbsent(\"d\", 4);\r\nmap.putIfAbsent(\"a\", 999); // ignored, \"a\" already exists\r\nSystem.out.println(\"putIfAbsent: \" + map);\r\n\r\nmap.compute(\"a\", (k, v) -> v + 10); // a -> 11\r\nSystem.out.println(\"compute: \" + map);\r\n\r\nmap.computeIfAbsent(\"e\", k -> k.length()); // e -> 1\r\nSystem.out.println(\"computeIfAbsent: \" + map);\r\n\r\nmap.computeIfPresent(\"b\", (k, v) -> v * 100); // b -> 200\r\nSystem.out.println(\"computeIfPresent: \" + map);\r\n\r\nmap.merge(\"a\", 5, Integer::sum); // a -> 11+5 = 16\r\nSystem.out.println(\"merge: \" + map);\r\n\r\nmap.replaceAll((k, v) -> v + 1);\r\nSystem.out.println(\"replaceAll: \" + map);\r\n\r\nSystem.out.print(\"forEach: \");\r\nmap.forEach((k, v) -> System.out.print(k + \"=\" + v + \" \"));\r\nSystem.out.println();\r\n\r\n// ===================== List/Collection new methods =====================\r\nSystem.out.println(\"\\n===== List/Collection Methods =====\");\r\n\r\nList<String> items = new ArrayList<>(List.of(\"banana\", \"apple\", \"cherry\", \"avocado\", \"blueberry\"));\r\n\r\nSystem.out.print(\"forEach: \");\r\nitems.forEach(s -> System.out.print(s + \" \"));\r\nSystem.out.println();\r\n\r\nitems.removeIf(s -> s.startsWith(\"a\")); // removes apple, avocado\r\nSystem.out.println(\"removeIf (startsWith 'a'): \" + items);\r\n\r\nitems.replaceAll(String::toUpperCase);\r\nSystem.out.println(\"replaceAll toUpperCase: \" + items);\r\n\r\nitems.sort(Comparator.naturalOrder());\r\nSystem.out.println(\"sort: \" + items);\r\n\r\n// ===================== Comparator new methods =====================\r\nSystem.out.println(\"\\n===== Comparator Methods =====\");\r\n\r\nList<String> names = new ArrayList<>(List.of(\"Charlie\", \"Alice\", \"Bob\", \"Alice\"));\r\n\r\nnames.sort(Comparator.comparingInt(String::length).thenComparing(Comparator.naturalOrder()));\r\nSystem.out.println(\"comparing + thenComparing: \" + names);\r\n\r\nnames.sort(Comparator.comparingInt(String::length).reversed());\r\nSystem.out.println(\"reversed: \" + names);\r\n\r\nList<String> withNulls = new ArrayList<>(Arrays.asList(\"B\", null, \"A\", null, \"C\"));\r\nwithNulls.sort(Comparator.nullsFirst(Comparator.naturalOrder()));\r\nSystem.out.println(\"nullsFirst: \" + withNulls);\r\n\r\nwithNulls.sort(Comparator.nullsLast(Comparator.naturalOrder()));\r\nSystem.out.println(\"nullsLast: \" + withNulls);\r\n\r\n// ===================== Arrays new methods =====================\r\nSystem.out.println(\"\\n===== Arrays Methods =====\");\r\n\r\nint[] arr = {5, 3, 1, 4, 2};\r\n\r\nIntStream arrayStream = Arrays.stream(arr);\r\nSystem.out.println(\"stream sum: \" + arrayStream.sum());\r\n\r\nint[] toSort = {5, 3, 1, 4, 2};\r\nArrays.parallelSort(toSort);\r\nSystem.out.println(\"parallelSort: \" + Arrays.toString(toSort));\r\n\r\nint[] prefix = {1, 2, 3, 4, 5};\r\nArrays.parallelPrefix(prefix, Integer::sum); // running sum: [1, 3, 6, 10, 15]\r\nSystem.out.println(\"parallelPrefix (running sum): \" + Arrays.toString(prefix));\r\n\r\nint[] generated = new int[5];\r\nArrays.parallelSetAll(generated, i -> i * i); // [0, 1, 4, 9, 16]\r\nSystem.out.println(\"parallelSetAll (i²): \" + Arrays.toString(generated));\r\n\r\n// ===================== Math new methods =====================\r\nSystem.out.println(\"\\n===== Math Methods =====\");\r\n\r\nSystem.out.println(\"addExact: \" + Math.addExact(100, 200)); // 300\r\n// Math.addExact(Integer.MAX_VALUE, 1); // throws ArithmeticException\r\nSystem.out.println(\"floorDiv(7, 2): \" + Math.floorDiv(7, 2));     // 3\r\nSystem.out.println(\"floorDiv(-7, 2): \" + Math.floorDiv(-7, 2));   // -4 (vs -7/2 = -3)\r\nSystem.out.println(\"floorMod(-7, 2): \" + Math.floorMod(-7, 2));   // 1 (always non-negative for positive divisor)\r\nSystem.out.println(\"toIntExact(42L): \" + Math.toIntExact(42L));\r\n\r\n// ===================== Integer/Long/Double new methods =====================\r\nSystem.out.println(\"\\n===== Integer/Long/Double Methods =====\");\r\n\r\nSystem.out.println(\"Integer.sum(3, 4): \" + Integer.sum(3, 4));\r\nSystem.out.println(\"Integer.max(3, 4): \" + Integer.max(3, 4));\r\nSystem.out.println(\"Integer.min(3, 4): \" + Integer.min(3, 4));\r\nSystem.out.println(\"Long.compareUnsigned(-1, 1): \" + Long.compareUnsigned(-1L, 1L)); // positive, -1 as unsigned is large\r\nSystem.out.println(\"Double.isFinite(1.0): \" + Double.isFinite(1.0));\r\nSystem.out.println(\"Double.isFinite(Infinity): \" + Double.isFinite(Double.POSITIVE_INFINITY));\r\n\r\n// Practical use: Integer.sum as method reference in reduction\r\nList<Integer> nums = List.of(1, 2, 3, 4, 5);\r\nint total = nums.stream().reduce(0, Integer::sum);\r\nSystem.out.println(\"reduce with Integer::sum: \" + total); // 15",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0d35e9c4-f1d2-48a1-9aac-a52a9dd4e908",
+      "cell_type": "code",
+      "source": "import java.util.*;\r\n\r\n// ===================== Optional API (Java 8) =====================\r\n\r\n// 1. Creating Optionals\r\nOptional<String> empty = Optional.empty();\r\nOptional<String> ofValue = Optional.of(\"Hello\");\r\nOptional<String> nullable = Optional.ofNullable(null);\r\nOptional<String> nullable2 = Optional.ofNullable(\"World\");\r\n\r\nSystem.out.println(\"empty: \" + empty);           // Optional.empty\r\nSystem.out.println(\"of: \" + ofValue);             // Optional[Hello]\r\nSystem.out.println(\"ofNullable(null): \" + nullable);   // Optional.empty\r\nSystem.out.println(\"ofNullable(val): \" + nullable2);   // Optional[World]\r\n\r\n// 2. isPresent / get\r\nSystem.out.println(\"\\nisPresent: \" + ofValue.isPresent()); // true\r\nSystem.out.println(\"isPresent (empty): \" + empty.isPresent()); // false\r\nSystem.out.println(\"get: \" + ofValue.get()); // Hello\r\n// empty.get(); // throws NoSuchElementException\r\n\r\n// 3. ifPresent — execute action if value exists\r\nofValue.ifPresent(v -> System.out.println(\"ifPresent: \" + v)); // ifPresent: Hello\r\nempty.ifPresent(v -> System.out.println(\"This won't print\"));\r\n\r\n// 4. orElse — return default if empty\r\nSystem.out.println(\"\\norElse: \" + empty.orElse(\"Default\")); // Default\r\nSystem.out.println(\"orElse (present): \" + ofValue.orElse(\"Default\")); // Hello\r\n\r\n// 5. orElseGet — lazy default via Supplier\r\nSystem.out.println(\"orElseGet: \" + empty.orElseGet(() -> \"Computed Default\"));\r\n\r\n// 6. orElseThrow — throw if empty\r\ntry {\r\n    empty.orElseThrow(() -> new IllegalStateException(\"No value!\"));\r\n} catch (IllegalStateException e) {\r\n    System.out.println(\"orElseThrow: \" + e.getMessage());\r\n}\r\n\r\n// 7. map — transform value if present\r\nOptional<Integer> length = ofValue.map(String::length);\r\nSystem.out.println(\"\\nmap (length): \" + length); // Optional[5]\r\nSystem.out.println(\"map on empty: \" + empty.map(String::length)); // Optional.empty\r\n\r\n// 8. flatMap — avoids Optional<Optional<T>>\r\nOptional<Optional<String>> nested = ofValue.map(s -> Optional.of(s.toUpperCase()));\r\nOptional<String> flat = ofValue.flatMap(s -> Optional.of(s.toUpperCase()));\r\nSystem.out.println(\"map (nested): \" + nested);     // Optional[Optional[HELLO]]\r\nSystem.out.println(\"flatMap (flat): \" + flat);      // Optional[HELLO]\r\nSystem.out.println(\"flatMap on empty: \" + empty.flatMap(s -> Optional.of(s.toUpperCase()))); // Optional.empty\r\n\r\n// 9. filter — keep value only if predicate matches\r\nSystem.out.println(\"\\nfilter (match): \" + ofValue.filter(s -> s.startsWith(\"H\"))); // Optional[Hello]\r\nSystem.out.println(\"filter (no match): \" + ofValue.filter(s -> s.startsWith(\"X\"))); // Optional.empty\r\nSystem.out.println(\"filter on empty: \" + empty.filter(s -> s.startsWith(\"H\"))); // Optional.empty\r\n\r\n// 10. Chaining operations — realistic example\r\nSystem.out.println(\"\\n===== Practical Examples =====\");\r\n\r\nMap<String, Map<String, String>> users = new HashMap<>();\r\nusers.put(\"user1\", Map.of(\"email\", \"user1@example.com\", \"name\", \"Alice\"));\r\nusers.put(\"user2\", Map.of(\"name\", \"Bob\"));\r\n\r\n// Safe nested lookup\r\nString email = Optional.ofNullable(users.get(\"user1\"))\r\n    .map(profile -> profile.get(\"email\"))\r\n    .map(String::toUpperCase)\r\n    .orElse(\"NO EMAIL\");\r\nSystem.out.println(\"User1 email: \" + email); // USER1@EXAMPLE.COM\r\n\r\nString missingEmail = Optional.ofNullable(users.get(\"user2\"))\r\n    .map(profile -> profile.get(\"email\"))\r\n    .orElse(\"NO EMAIL\");\r\nSystem.out.println(\"User2 email: \" + missingEmail); // NO EMAIL\r\n\r\nString unknownUser = Optional.ofNullable(users.get(\"user3\"))\r\n    .map(profile -> profile.get(\"email\"))\r\n    .orElse(\"NO EMAIL\");\r\nSystem.out.println(\"User3 email: \" + unknownUser); // NO EMAIL\r\n\r\n// 11. Optional with streams\r\nList<Optional<String>> optionals = List.of(\r\n    Optional.of(\"A\"), Optional.empty(), Optional.of(\"B\"), Optional.empty(), Optional.of(\"C\")\r\n);\r\n\r\n// Java 8 way to extract present values\r\nList<String> presentValues = optionals.stream()\r\n    .filter(Optional::isPresent)\r\n    .map(Optional::get)\r\n    .collect(Collectors.toList());\r\nSystem.out.println(\"\\nPresent values: \" + presentValues); // [A, B, C]\r\n\r\n// 12. OptionalInt, OptionalLong, OptionalDouble — primitive specializations\r\nOptionalInt optInt = OptionalInt.of(42);\r\nOptionalLong optLong = OptionalLong.empty();\r\nOptionalDouble optDouble = OptionalDouble.of(3.14);\r\n\r\nSystem.out.println(\"\\nOptionalInt: \" + optInt.getAsInt());           // 42\r\nSystem.out.println(\"OptionalLong present: \" + optLong.isPresent()); // false\r\nSystem.out.println(\"OptionalLong orElse: \" + optLong.orElse(0L));   // 0\r\nSystem.out.println(\"OptionalDouble: \" + optDouble.getAsDouble());   // 3.14",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}

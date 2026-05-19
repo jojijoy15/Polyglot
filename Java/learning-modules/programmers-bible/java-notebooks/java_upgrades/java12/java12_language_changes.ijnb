@@ -1,0 +1,193 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "a9779c33-f52f-49d8-9f65-054d86f85fe8",
+      "cell_type": "markdown",
+      "source": "## Java 12 Changes\n\n### Language\n\n- API Changes\n    1. Switch Expression (Preview)\n    2. Collectors.teeing()\n    3. Compact Number Format\n    4. String.indent and transform\n    5. Files.mismatch\n    6. JVM Constant API\n        - New package java.lang.constant with nominal descriptor interfaces for JVM constants.\n        - Enables frameworks and tools to model class-file constants without needing to load classes.\n        - Relies on the CONSTANT_Dynamic introduced in Java 11.\n\n### Platform\n\n#### JVM Changes\n\n1. Default CDS Archives\n\n```sh\n\n# Java 10 introduced AppCDS (application class data sharing)\n# Java 11: CDS archive could be created manually\n# Java 12: default CDS archive included in JDK — no setup needed!\n\n# The default archive is at:\n# $JAVA_HOME/lib/server/classes.jsa  (64-bit)\n# $JAVA_HOME/lib/client/classes.jsa  (32-bit)\n\n# Auto-used by default — transparent startup speedup\njava com.example.App  # CDS active automatically\n\n# Verify CDS is being used\njava -Xshare:on -verbose:class com.example.App 2>&1 | head -5\n\n# Disable CDS (for comparison/debugging)\njava -Xshare:off com.example.App\n\n# Regenerate the default archive (e.g. after patching JDK)\njava -Xshare:dump\n\n# Still create custom archives for app classes (Java 10+ style)\njava -XX:ArchiveClassesAtExit=myapp.jsa \\\n     -cp myapp.jar com.example.App  # generates archive on exit\n\njava -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar com.example.App  # uses the archive\n\n// Measured improvement:\n// ~10-30% faster startup for typical Java apps using default archive\n// Especially noticeable for CLI tools, microservices, serverless functions\n```\n\n\n2. G1 Improvements\n\n- Two significant G1 enhancements: Abortable Mixed Collections (JEP 344) reduces worst-case pause times, and Promptly Return Unused Memory (JEP 346) reduces memory footprint during idle periods.\n\n```sh\n\n// PROBLEM: G1 mixed GC collections could exceed the pause time goal\n// because once started, they had to complete even if taking too long\n\n// JAVA 12 FIX: G1 can now abort a mixed collection midway\n// if it detects it's exceeding the pause goal (-XX:MaxGCPauseMillis)\n// Remaining regions are deferred to the next collection cycle\n\n// No code changes needed — transparent improvement\n// G1 splits mixed collections into mandatory + optional sets\n// The optional set can be abandoned if pause goal is at risk\n\n# Related flags:\njava -XX:+UseG1GC \\\n     -XX:MaxGCPauseMillis=200 \\          # pause goal — now better respected\n     -XX:G1MixedGCCountTarget=8 \\        # target mixed GC count per cycle\n     -XX:G1MixedGCLiveThresholdPercent=85 \\ # only collect regions <85% live\n     com.example.App\n\n// Result: p99 pause time latency significantly reduced for large heaps\n// Applications with strict SLAs benefit most\n\n\n// PROBLEM: G1 held onto committed heap memory even when application\n// was idle or had low memory needs (e.g. after a GC burst)\n// Bad for containers and cloud — OS memory not released back\n\n// JAVA 12 FIX: G1 now proactively triggers GC during idle periods\n// and returns unused committed heap pages to the OS\n\n// Triggered by: concurrent GC cycle that identifies unused regions\n// G1 \"uncommits\" heap regions → OS memory freed\n\n# Key flags:\njava -XX:+UseG1GC \\\n     -XX:G1PeriodicGCInterval=9000 \\    # check every 9s (ms), 0=disabled\n     -XX:G1PeriodicGCSystemLoadThreshold=0.5 \\  # only if system load < 50%\n     -XX:MinHeapFreeRatio=10 \\          # target: keep at least 10% free\n     -XX:MaxHeapFreeRatio=20 \\          # shrink if free > 20%\n     com.example.App\n\n// Most beneficial for:\n// - Containerised apps (Docker/Kubernetes memory limits)\n// - Serverless functions with bursty traffic\n// - Applications with variable load patterns\n\n// Before Java 12: had to use -XX:+AggressiveHeap or manual -XX:MaxHeapFreeRatio\n// After  Java 12: G1 does it automatically during idle time\n```\n\n3. Microbenchmark Suite\n\n- Java 12 adds an official JMH (Java Microbenchmark Harness) based test suite inside the JDK source.\n- Enables JDK developers to write and maintain microbenchmarks using JMH — ensuring the JDK's own performance regressions are caught early.\n\n#### Experimental\n\n- A new ultra-low-pause garbage collector that performs GC work concurrently with the running application, including compaction.\n- Pause times are proportional to root set size, not heap size — independent of heap. \n- RedHat contribution.\n\n```sh\n\n# Enable Shenandoah GC\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseShenandoahGC \\\n     -Xmx8g \\\n     com.example.App\n\n# Key tuning flags\njava -XX:+UseShenandoahGC \\\n     -XX:+UnlockExperimentalVMOptions \\\n     -XX:ShenandoahGCHeuristics=adaptive \\    # adaptive (default), static, compact, aggressive\n     -XX:ShenandoahInitFreeThreshold=70 \\     # start GC when free heap < 70%\n     -XX:ShenandoahMinFreeThreshold=10 \\      # emergency GC below 10%\n     -XX:ShenandoahAllocationThreshold=5 \\    # concurrent GC if alloc rate > 5%\n     -Xlog:gc*:file=shen.log \\\n     com.example.App\n\n// Shenandoah vs ZGC vs G1 comparison:\n// ┌──────────────┬───────────────┬───────────────┬────────────────┐\n// │              │ G1 (default)  │ ZGC (JEP 333) │ Shenandoah     │\n// ├──────────────┼───────────────┼───────────────┼────────────────┤\n// │ Pauses       │ 100-500ms     │ <10ms         │ <10ms          │\n// │ Throughput   │ High          │ Medium-High   │ Medium-High    │\n// │ Compaction   │ Concurrent    │ Concurrent    │ Concurrent     │\n// │ Heap size    │ Any           │ 8MB–16TB      │ Any            │\n// │ Platform     │ All           │ Linux (Java11)│ All            │\n// │ Origin       │ Oracle        │ Oracle        │ Red Hat        │\n// └──────────────┴───────────────┴───────────────┴────────────────┘\n\n# Heuristics modes:\n# adaptive   → dynamically adjust based on allocation/free ratio (default)\n# static     → start GC at fixed free threshold\n# compact    → maximise compaction, higher CPU — for small heap\n# aggressive → continuous GC — stress testing only\n\n// Shenandoah becomes stable (non-experimental) in Java 15\n```",
+      "metadata": {
+        "language": "markdown",
+        "id": "a9779c33-f52f-49d8-9f65-054d86f85fe8"
+      }
+    },
+    {
+      "id": "35673582-3ff2-4eea-bde2-4586ca39a661",
+      "cell_type": "markdown",
+      "source": "## Switch Expression",
+      "metadata": {
+        "language": "markdown",
+        "id": "35673582-3ff2-4eea-bde2-4586ca39a661"
+      }
+    },
+    {
+      "id": "ee7859b1-d11b-4080-8c56-553395e8c95c",
+      "cell_type": "code",
+      "source": "// Java 11 and before — classic switch STATEMENT\r\n// Problems: fall-through bugs, repetitive breaks, no expression form\r\n\r\nString day = \"MONDAY\";\r\nint numLetters;\r\n\r\nswitch (day) {\r\n    case \"MONDAY\":\r\n    case \"FRIDAY\":\r\n    case \"SUNDAY\":\r\n        numLetters = 6;\r\n        break;                     // easy to forget!\r\n    case \"TUESDAY\":\r\n        numLetters = 7;\r\n        break;\r\n    case \"THURSDAY\":\r\n    case \"SATURDAY\":\r\n        numLetters = 8;\r\n        break;\r\n    case \"WEDNESDAY\":\r\n        numLetters = 9;\r\n        break;\r\n    default:\r\n        throw new IllegalStateException(\"Unknown: \" + day);\r\n}\r\nSystem.out.println(numLetters); // 6\r\n\r\n\r\n// Java 12 Preview: arrow labels → expression or block, no fall-through\r\n// Compile: javac --enable-preview --release 12 MyApp.java\r\n\r\nvar day = \"MONDAY\";\r\nint numLetters = switch (day) {          // switch EXPRESSION!\r\n    case \"MONDAY\", \"FRIDAY\", \"SUNDAY\"   -> 6;  // multiple labels in one case\r\n    case \"TUESDAY\"                        -> 7;\r\n    case \"THURSDAY\", \"SATURDAY\"          -> 8;\r\n    case \"WEDNESDAY\"                      -> 9;\r\n    default -> throw new IllegalStateException(\"Unknown: \" + day);\r\n};                                         // semicolon — it's an expression\r\nSystem.out.println(numLetters); // 6\r\n\r\n// Arrow case with a block → yield (Java 13+) or just expression\r\nint result = switch (day) {\r\n    case \"MONDAY\" -> {\r\n        System.out.println(\"Start of week\");\r\n        yield 1;                           // yield is Java 13 — in Java 12 preview: break value\r\n    }\r\n    default -> 0;\r\n};\r\n\r\nenum Season { SPRING, SUMMER, AUTUMN, WINTER }\r\n\r\nSeason season = Season.SUMMER;\r\n\r\n// Exhaustive switch — compiler enforces all enum values covered\r\n// No default needed if all cases handled\r\nString activity = switch (season) {\r\n    case SPRING -> \"Gardening\";\r\n    case SUMMER -> \"Swimming\";\r\n    case AUTUMN -> \"Hiking\";\r\n    case WINTER -> \"Skiing\";\r\n    // No default needed — all 4 enum values covered!\r\n    // Compiler error if you remove a case\r\n};\r\nSystem.out.println(activity); // \"Swimming\"\r\n\r\n// Used inline in expressions\r\nSystem.out.println(\"Activity: \" + switch (season) {\r\n    case SPRING, SUMMER -> \"Outdoor\";\r\n    case AUTUMN, WINTER -> \"Indoor\";\r\n});\r\n\r\n// As method return value\r\nstatic int getDays(Season s) {\r\n    return switch (s) {\r\n        case SPRING, SUMMER, AUTUMN -> 91;\r\n        case WINTER                 -> 90;\r\n    };\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "4d772ae7-cf6a-411a-882e-c3f3809015d7",
+      "cell_type": "code",
+      "source": "// Colon form (old syntax) can ALSO be used as an expression in Java 12\r\n// But still has fall-through behaviour — use break with a value\r\n\r\nint day = 3;\r\nString dayName = switch (day) {\r\n    case 1:  break \"Monday\";     // Java 12 preview: break with value\r\n    case 2:  break \"Tuesday\";\r\n    case 3:  break \"Wednesday\";\r\n    default: break \"Other\";\r\n};\r\n// Note: In Java 13, \"break value\" is replaced by \"yield value\"\r\n// This was the breaking change between Java 12 preview and Java 13 preview\r\n\r\n// RULE SUMMARY:\r\n// ┌──────────────────────┬────────────────────────────────────┐\r\n// │ Classic (: syntax)   │ Arrow (-> syntax)                  │\r\n// ├──────────────────────┼────────────────────────────────────┤\r\n// │ Fall-through exists  │ No fall-through                    │\r\n// │ break needed         │ No break needed                    │\r\n// │ break value (Java12) │ Expression or block directly       │\r\n// │ yield (Java 13+)     │ yield in blocks (Java 13+)         │\r\n// └──────────────────────┴────────────────────────────────────┘\r\n\r\n// ❗ COMPILER FLAG required for Java 12:\r\n// java --enable-preview --source 12 MyApp.java\r\n// javac --enable-preview --release 12 MyApp.java",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "49f7d943-d535-4d9c-8cac-c48339c5dcf0",
+      "cell_type": "code",
+      "source": "// Switch expressions are POLY EXPRESSIONS — type adapts to context\r\n\r\n// All arms must be compatible types\r\nint    i = switch(x) { case 1 -> 10;    case 2 -> 20;     default -> 0;       };\r\nString s = switch(x) { case 1 -> \"A\";  case 2 -> \"BB\";  default -> \"?\";    };\r\ndouble d = switch(x) { case 1 -> 1;    case 2 -> 2.5;   default -> 0.0;    };\r\n\r\n// Switch expressions MUST be exhaustive:\r\n// - Enum switch: all enum constants must be covered, OR have default\r\n// - int/String switch: must have default\r\n// - No exhaustiveness → compile error\r\n\r\n// Arms can throw exceptions (treated as no-value)\r\nString label = switch (code) {\r\n    case 200 -> \"OK\";\r\n    case 404 -> \"Not Found\";\r\n    case 500 -> \"Server Error\";\r\n    default  -> throw new IllegalArgumentException(\"Unknown: \" + code);\r\n};\r\n\r\n// Nested switch expressions\r\nString category = switch (type) {\r\n    case \"A\", \"B\" -> switch (subType) {\r\n        case \"X\" -> \"AX/BX\";\r\n        default -> \"A/B-Other\";\r\n    };\r\n    default -> \"Other\";\r\n};",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "1337e180-e3f0-4beb-9288-afd0c52ac5f4",
+      "cell_type": "markdown",
+      "source": "## Collectors Teeing",
+      "metadata": {
+        "language": "markdown",
+        "id": "1337e180-e3f0-4beb-9288-afd0c52ac5f4"
+      }
+    },
+    {
+      "id": "60f9852f-4d13-48b5-b48f-6b6606593bde",
+      "cell_type": "code",
+      "source": "// Collectors.teeing(downstream1, downstream2, merger)\r\n// Every element is passed to BOTH collectors simultaneously\r\n// Results from both are merged by the BiFunction merger\r\n\r\nList<Integer> nums = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);\r\n\r\n// Compute sum AND count in one pass — used to calculate average\r\ndouble average = nums.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.summingInt(Integer::intValue),   // downstream 1: sum → 55\r\n        Collectors.counting(),                        // downstream 2: count → 10\r\n        (sum, count) -> (double) sum / count          // merger: 55.0 / 10 = 5.5\r\n    ));\r\nSystem.out.println(average); // 5.5\r\n\r\n// Min and Max simultaneously\r\nrecord MinMax(int min, int max) {}\r\nMinMax minMax = nums.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.minBy(Comparator.naturalOrder()),  // Optional[1]\r\n        Collectors.maxBy(Comparator.naturalOrder()),  // Optional[10]\r\n        (min, max) -> new MinMax(min.orElseThrow(), max.orElseThrow())\r\n    ));\r\nSystem.out.println(minMax); // MinMax[min=1, max=10]\r\n\r\n\r\nList<String> words = List.of(\"apple\", \"ant\", \"bat\", \"bee\", \"cat\", \"cow\");\r\n\r\nrecord Partitioned(List<String> short_, List<String> long_) {}\r\n\r\nPartitioned result = words.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.filtering(w -> w.length() <= 3, Collectors.toList()), // short words\r\n        Collectors.filtering(w -> w.length() >  3, Collectors.toList()), // long words\r\n        Partitioned::new\r\n    ));\r\nSystem.out.println(result.short_()); // [ant, bat, bee, cat, cow]\r\nSystem.out.println(result.long_());  // [apple]\r\n\r\n// Why teeing over partitioningBy?\r\n// partitioningBy → always two keys: true/false\r\n// teeing → custom result type, not limited to List, can combine any collectors\r\n\r\n\r\nList<Integer> prices = List.of(100, 250, 75, 300, 50);\r\n\r\nrecord Summary(int total, List<Integer> discounted) {}\r\n\r\n// In ONE stream pass: compute total AND collect discounted items\r\nSummary summary = prices.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.summingInt(Integer::intValue),\r\n        Collectors.filtering(p -> p < 200, Collectors.toList()),\r\n        Summary::new\r\n    ));\r\nSystem.out.println(summary.total());      // 775\r\nSystem.out.println(summary.discounted()); // [100, 75, 50]\r\n\r\n// Chain teeing with other collectors\r\nMap<Boolean, Long> counts = prices.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.partitioningBy(p -> p >= 200,\r\n            Collectors.counting()),                    // Map<Boolean,Long>\r\n        Collectors.counting(),                         // total Long\r\n        (partMap, total) -> partMap                    // just return partition map here\r\n    ));\r\n\r\n\r\nrecord Stats(long count, int sum, double avg, int min, int max) {}\r\n\r\nList<Integer> data = List.of(4, 7, 2, 9, 1, 5, 8, 3, 6);\r\n\r\n// Using summarizingInt for full stats\r\nIntSummaryStatistics stats1 = data.stream()\r\n    .collect(Collectors.summarizingInt(Integer::intValue));\r\n\r\n// Using teeing to split into summary + filtered list\r\nrecord Report(IntSummaryStatistics stats, List<Integer> outliers) {}\r\n\r\nReport report = data.stream()\r\n    .collect(Collectors.teeing(\r\n        Collectors.summarizingInt(Integer::intValue),\r\n        Collectors.filtering(n -> n > 7, Collectors.toList()),  // outliers\r\n        Report::new\r\n    ));\r\n\r\nSystem.out.println(report.stats().getAverage()); // 5.0\r\nSystem.out.println(report.outliers());           // [9, 8]",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "8e573b10-a088-4485-b384-a745c1fd13f9",
+      "cell_type": "markdown",
+      "source": "## Compact Number Format",
+      "metadata": {
+        "language": "markdown",
+        "id": "8e573b10-a088-4485-b384-a745c1fd13f9"
+      }
+    },
+    {
+      "id": "a3daa757-b3a7-4965-a92f-296e54297946",
+      "cell_type": "code",
+      "source": "// NumberFormat.getCompactNumberInstance(Locale, Style)\r\nNumberFormat shortFmt = NumberFormat.getCompactNumberInstance(\r\n    Locale.US, NumberFormat.Style.SHORT);\r\n\r\nshortFmt.format(1_000);         // \"1K\"\r\nshortFmt.format(10_000);        // \"10K\"\r\nshortFmt.format(100_000);       // \"100K\"\r\nshortFmt.format(1_000_000);     // \"1M\"\r\nshortFmt.format(1_500_000);     // \"2M\"  (rounded)\r\nshortFmt.format(1_000_000_000); // \"1B\"\r\nshortFmt.format(999);           // \"999\" (below threshold)\r\n\r\n// LONG style — spells out the word\r\nNumberFormat longFmt = NumberFormat.getCompactNumberInstance(\r\n    Locale.US, NumberFormat.Style.LONG);\r\n\r\nlongFmt.format(1_000);         // \"1 thousand\"\r\nlongFmt.format(2_500_000);     // \"3 million\"\r\nlongFmt.format(4_000_000_000L);// \"4 billion\"\r\n\r\n\r\n\r\n// Compact format is locale-specific\r\nlong n = 1_500_000;\r\n\r\nNumberFormat.getCompactNumberInstance(Locale.US,    NumberFormat.Style.SHORT).format(n); // \"2M\"\r\nNumberFormat.getCompactNumberInstance(Locale.JAPAN, NumberFormat.Style.SHORT).format(n); // \"150万\" (150 man)\r\nNumberFormat.getCompactNumberInstance(Locale.CHINA, NumberFormat.Style.SHORT).format(n); // \"150万\"\r\nNumberFormat.getCompactNumberInstance(Locale.UK,    NumberFormat.Style.SHORT).format(n); // \"2M\"\r\nNumberFormat.getCompactNumberInstance(\r\n    Locale.forLanguageTag(\"hi-IN\"), NumberFormat.Style.SHORT).format(n); // \"15 लाख\"\r\nNumberFormat.getCompactNumberInstance(\r\n    Locale.forLanguageTag(\"ar\"),    NumberFormat.Style.SHORT).format(n); // Arabic notation\r\n\r\n\r\n// Control decimal precision\r\nNumberFormat fmt = NumberFormat.getCompactNumberInstance(\r\n    Locale.US, NumberFormat.Style.SHORT);\r\nfmt.setMaximumFractionDigits(2);\r\n\r\nfmt.format(1_500);         // \"1.5K\"  (with 2 decimal places)\r\nfmt.format(1_234_567);    // \"1.23M\"\r\nfmt.format(999_999);      // \"1000K\" or \"1M\" depending on rounding\r\n\r\n// Grouping separator\r\nfmt.setGroupingUsed(true);\r\n\r\n// Parsing compact strings back to numbers\r\nNumber parsed = fmt.parse(\"2.5K\"); // 2500.0\r\nNumber parsed2 = fmt.parse(\"3M\");  // 3000000.0\r\n\r\n// Practical: UI display for social metrics\r\nNumberFormat ui = NumberFormat.getCompactNumberInstance(Locale.US, NumberFormat.Style.SHORT);\r\nui.setMaximumFractionDigits(1);\r\nSystem.out.println(ui.format(1_200));      // \"1.2K\" likes\r\nSystem.out.println(ui.format(1_450_000));  // \"1.5M\" views\r\nSystem.out.println(ui.format(3_200_000_000L)); // \"3.2B\" revenue",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "e9ba39fd-0dbe-40f8-988a-5c48c9b3692a",
+      "cell_type": "markdown",
+      "source": "## String APIs",
+      "metadata": {
+        "language": "markdown",
+        "id": "e9ba39fd-0dbe-40f8-988a-5c48c9b3692a"
+      }
+    },
+    {
+      "id": "69e8c018-ae8f-41eb-ac64-fea7052fd7d4",
+      "cell_type": "code",
+      "source": "// indent(n) — adjusts indentation of each line by n spaces\r\n// Positive n: adds spaces. Negative n: removes spaces. Always ends with \\n.\r\nString code = \"public class Foo {\\n    void bar() {}\\n}\";\r\nSystem.out.print(code.indent(4));\r\n// \"    public class Foo {\r\n//      void bar() {}          ← each line gets +4 spaces\r\n// }\"\r\n\r\nSystem.out.print(code.indent(0));  // normalises line endings only\r\n\r\n// transform(Function<String, R>) — apply a function to the string\r\n// Enables fluent pipelines without intermediate variables\r\nString result = \"  hello world  \"\r\n    .strip()                                // \"hello world\"\r\n    .transform(s -> s.substring(0, 1)      // \"h\"\r\n                      .toUpperCase() + s.substring(1)) // \"Hello world\"\r\n    .transform(s -> \"[\" + s + \"]\");       // \"[Hello world]\"\r\n\r\n// transform is generic — can return non-String\r\nint len = \"hello\".transform(String::length); // 5\r\n\r\n// Useful to chain functions that don't return String\r\nList<String> words = \"alpha,beta,gamma\"\r\n    .transform(s -> Arrays.asList(s.split(\",\"))); // List<String>\r\n\r\n\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "55ee8e32-7c84-443e-94b7-f96dcf6b27ea",
+      "cell_type": "code",
+      "source": "// Adjusts indentation of every line by n spaces\r\n// Positive n → adds n spaces to each line\r\n// Negative n → removes up to n leading spaces from each line\r\n// Always ensures each line ends with \\n (normalises line endings)\r\n\r\nString text = \"Hello\\nWorld\\nJava\";\r\n\r\nSystem.out.print(text.indent(4));\r\n// \"    Hello\\n\"\r\n// \"    World\\n\"\r\n// \"    Java\\n\"\r\n\r\nSystem.out.print(text.indent(0));  // no indent change, but normalises \\n\r\n\r\nString indented = \"    code block\\n    more code\";\r\nSystem.out.print(indented.indent(-2));\r\n// \"  code block\\n\"\r\n// \"  more code\\n\"\r\n\r\nSystem.out.print(indented.indent(-10)); // removes all leading spaces (min 0)\r\n// \"code block\\n\"\r\n// \"more code\\n\"\r\n\r\n// Real use: format code blocks, markdown, config files\r\nString yaml = \"name: Alice\\nage: 30\";\r\nString nested = \"user:\\n\" + yaml.indent(2);\r\n// \"user:\\n\"\r\n// \"  name: Alice\\n\"\r\n// \"  age: 30\\n\"",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "388fbecc-b610-48e9-948c-f4c7b7691919",
+      "cell_type": "code",
+      "source": "// Applies a Function to this string — enables fluent string pipelines\r\n// Can return ANY type (not just String)\r\n\r\n// Basic: chain transformations without intermediate variables\r\nString result = \"  hello world  \"\r\n    .strip()                                  // \"hello world\"\r\n    .transform(s -> s.substring(0, 1).toUpperCase() + s.substring(1))\r\n    .transform(s -> \"[\" + s + \"]\");          // \"[Hello world]\"\r\n\r\n// Return non-String type\r\nint length = \"hello\".transform(String::length); // 5\r\n\r\nList<String> parts = \"a,b,c,d\"\r\n    .transform(s -> Arrays.asList(s.split(\",\"))); // [a, b, c, d]\r\n\r\n// Conditional transformation\r\nString safe = input\r\n    .transform(s -> s == null || s.isBlank() ? \"default\" : s)\r\n    .strip()\r\n    .transform(String::toUpperCase);\r\n\r\n// Chain with Optional-like logic\r\nOptional<String> opt = \"   alice   \"\r\n    .strip()\r\n    .transform(s -> s.isBlank() ? Optional.empty() : Optional.of(s));\r\n\r\n// Great for pipelines that used to need ugly nested calls:\r\n// old: uppercase(trim(removeSpecialChars(input)))\r\n// new: input.transform(this::removeSpecialChars).strip().transform(String::toUpperCase)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "54e1a640-bede-4ef2-9c26-54e23768179d",
+      "cell_type": "markdown",
+      "source": "## Files API",
+      "metadata": {
+        "language": "markdown",
+        "id": "54e1a640-bede-4ef2-9c26-54e23768179d"
+      }
+    },
+    {
+      "id": "7d438703-9722-4eb8-9ddb-882d6bf24351",
+      "cell_type": "code",
+      "source": "// Signature:\r\n// static long Files.mismatch(Path path1, Path path2) throws IOException\r\n// Returns: index of first mismatch, or -1 if files are identical\r\n\r\n// Create two test files\r\nPath f1 = Files.writeString(Path.of(\"f1.txt\"), \"Hello World\");\r\nPath f2 = Files.writeString(Path.of(\"f2.txt\"), \"Hello World\");\r\nPath f3 = Files.writeString(Path.of(\"f3.txt\"), \"Hello Java!\");\r\nPath f4 = Files.writeString(Path.of(\"f4.txt\"), \"Hello World Extra\");\r\n\r\n// Identical files → -1\r\nFiles.mismatch(f1, f2); // -1   (identical)\r\n\r\n// Same file reference → -1\r\nFiles.mismatch(f1, f1); // -1   (same path)\r\n\r\n// Different content → first differing byte index\r\nFiles.mismatch(f1, f3); // 6    ('W' vs 'J' at position 6)\r\n// \"Hello World\"\r\n// \"Hello Java!\"\r\n//       ^ index 6\r\n\r\n// One file is prefix of other → length of shorter file\r\nFiles.mismatch(f1, f4); // 11   (f1 ends, f4 continues)\r\n\r\n// Practical use: verify file copies / backups\r\nlong mismatch = Files.mismatch(original, backup);\r\nif (mismatch == -1) {\r\n    System.out.println(\"Backup is identical ✓\");\r\n} else {\r\n    System.out.printf(\"Files differ at byte %d%n\", mismatch);\r\n}\r\n\r\n// CI/CD: verify generated files match expected output\r\nlong diff = Files.mismatch(generated, expected);\r\nif (diff != -1) {\r\n    throw new AssertionError(\"Output mismatch at byte \" + diff);\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "ce38f46e-31cb-4876-922f-750c16a036a5",
+      "cell_type": "markdown",
+      "source": "## JVM Constant API",
+      "metadata": {
+        "language": "markdown",
+        "id": "ce38f46e-31cb-4876-922f-750c16a036a5"
+      }
+    },
+    {
+      "id": "fb7771c1-44f7-4da5-8f0d-0464d055a878",
+      "cell_type": "code",
+      "source": "import java.lang.constant.*;\r\n\r\n// ConstantDesc — root interface for symbolic references to constants\r\n// Subtypes: ClassDesc, MethodTypeDesc, MethodHandleDesc, DynamicConstantDesc\r\n\r\n// ClassDesc — nominal descriptor for a Class\r\nClassDesc stringDesc = ClassDesc.of(\"java.lang.String\");\r\nClassDesc intDesc     = ClassDesc.ofDescriptor(\"I\");        // int\r\nClassDesc arrayDesc   = ClassDesc.of(\"java.lang.String\").arrayType(); // String[]\r\n\r\nstringDesc.descriptorString();  // \"Ljava/lang/String;\"\r\nstringDesc.displayName();       // \"String\"\r\nstringDesc.packageName();       // \"java.lang\"\r\nstringDesc.isClassOrInterface();// true\r\nstringDesc.isPrimitive();       // false\r\n\r\n// MethodTypeDesc — nominal descriptor for a method type\r\nMethodTypeDesc mtd = MethodTypeDesc.of(\r\n    ClassDesc.of(\"java.lang.String\"),     // return type\r\n    ClassDesc.of(\"java.lang.String\"),     // param 1\r\n    ClassDesc.ofDescriptor(\"I\")          // param 2: int\r\n);\r\nmtd.descriptorString(); // \"(Ljava/lang/String;I)Ljava/lang/String;\"\r\nmtd.returnType();       // ClassDesc for String\r\nmtd.parameterCount();   // 2",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "f23f8f0c-effc-4107-8eee-59cd2836bb9c",
+      "cell_type": "code",
+      "source": "// Java 12: many JDK types now implement Constable and/or ConstantDesc\r\n// Constable: can produce a ConstantDesc describing themselves\r\n// ConstantDesc: can be resolved to a constant at runtime\r\n\r\n// Types that now implement Constable:\r\n// String, Integer, Long, Float, Double, Class, MethodHandle, MethodType\r\n\r\n// describeConstable() — get nominal descriptor of a value\r\nOptional<ClassDesc> cd = String.class.describeConstable();\r\ncd.get().descriptorString(); // \"Ljava/lang/String;\"\r\n\r\nOptional<? extends ConstantDesc> id = (42).describeConstable();\r\nid.get(); // Integer constant descriptor\r\n\r\nOptional<? extends ConstantDesc> sd = \"hello\".describeConstable();\r\nsd.get(); // String constant descriptor\r\n\r\n// Primary use: bytecode engineering libraries (ASM, ByteBuddy)\r\n// can model constants without loading classes → faster tooling\r\n\r\n// DynamicConstantDesc — for CONSTANT_Dynamic (JEP 309)\r\nDynamicConstantDesc<String> dcd = DynamicConstantDesc.of(\r\n    ConstantDescs.BSM_INVOKE,  // bootstrap method\r\n    ConstantDescs.CD_String    // type\r\n);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "aafa45c9-b1e6-4bc4-b629-7efc23cc7741",
+      "cell_type": "markdown",
+      "source": "// This JEP adds benchmarks to the JDK SOURCE repository\r\n// Not a new public API for application developers\r\n// But it validates and promotes JMH as THE standard benchmark tool\r\n\r\n// You can run the JDK's own benchmarks:\r\n# In JDK source tree:\r\nmake test TEST=micro:java.lang.StringBuilderMicroBenchmark\r\n\r\n// For your own application use JMH (unchanged API, but now \"official\"):\r\n// Maven dependency:\r\n// <dependency>\r\n//   <groupId>org.openjdk.jmh</groupId>\r\n//   <artifactId>jmh-core</artifactId>\r\n//   <version>1.37</version>\r\n// </dependency>\r\n\r\nimport org.openjdk.jmh.annotations.*;\r\n\r\n@BenchmarkMode(Mode.AverageTime)\r\n@OutputTimeUnit(TimeUnit.NANOSECONDS)\r\n@State(Scope.Thread)\r\npublic class StringBenchmark {\r\n\r\n    String input = \"Hello World\";\r\n\r\n    @Benchmark\r\n    public boolean testIsBlank() {\r\n        return input.isBlank();               // Java 11 method\r\n    }\r\n\r\n    @Benchmark\r\n    public boolean testTrimIsEmpty() {\r\n        return input.trim().isEmpty();        // old way\r\n    }\r\n\r\n    @Benchmark\r\n    public String testStrip() {\r\n        return input.strip();                 // Java 11 strip\r\n    }\r\n}\r\n\r\n# Run:\r\njava -jar benchmarks.jar StringBenchmark -f1 -wi 3 -i 5",
+      "metadata": {
+        "language": "markdown",
+        "id": "aafa45c9-b1e6-4bc4-b629-7efc23cc7741"
+      }
+    }
+  ]
+}

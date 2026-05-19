@@ -1,0 +1,268 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "7fa663a0-b822-4fe6-95e7-99cf08c37652",
+      "cell_type": "markdown",
+      "source": "## Java 10 Changes\n\n### New features\n\n1. var local type inference\n2. API Updates\n    - Collectors & Streams\n    - Collection copyOf\n    - Optional changes\n    - Files\n    - Thread deprecation for removal\n3. APP CDS (Class Data sharing)\n\n    - The goal of CDS is to reduce the startup time of the JVM by loading from a pre-processed archive of Java classes and JVM metadata that is used during the initialization process.\n\n```sh\n    # Step 1: Create a list of classes to archive\njava -Xshare:off \\\n     -XX:+UseAppCDS \\\n     -XX:DumpLoadedClassList=classes.lst \\\n     -cp myapp.jar com.example.Main\n\n# Step 2: Create the shared archive from that list\njava -Xshare:dump \\\n     -XX:+UseAppCDS \\\n     -XX:SharedClassListFile=classes.lst \\\n     -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar\n\n# Step 3: Run using the shared archive\njava -Xshare:on \\\n     -XX:+UseAppCDS \\\n     -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar com.example.Main\n\n# Benefits measured in practice:\n# - 30-50% startup time reduction for typical apps\n# - Reduced per-process memory when multiple JVMs share the archive\n# - Especially beneficial for microservices and serverless deployments\n\n# Java 10 extends to application classes (was JDK classes only in Java 8/9)\n# -XX:+UseAppCDS flag (becomes default ON in Java 12)\n\n# Flags:\n# -Xshare:off      — disable CDS\n# -Xshare:on       — require CDS (fails if archive not found)\n# -Xshare:auto     — use CDS if available, otherwise ignore (default)\n# -Xshare:dump     — dump shared class data to archive\n```\n\n\n4. G1 Parallel Full GC\n\n```sh\n# Java 9: G1 became default GC, BUT Full GC was single-threaded\n# Java 10: G1 Full GC is now PARALLEL (uses same thread count as young/mixed GC)\n\n# Number of threads used = -XX:ParallelGCThreads value\n# Default: based on number of processors\n\n# No code changes needed — transparent improvement\n\n# Relevant JVM flags:\njava -XX:+UseG1GC               # G1 (default since Java 9)\njava -XX:ParallelGCThreads=8    # threads for parallel GC phases (incl. full GC)\njava -XX:ConcGCThreads=4        # threads for concurrent marking\njava -XX:MaxGCPauseMillis=200   # G1 pause target (still respected)\n\n# To observe GC behaviour:\njava -Xlog:gc*:file=gc.log -XX:+UseG1GC MyApp\n\n# Impact:\n# Before (Java 9 G1 Full GC): single thread, could pause for seconds on large heap\n# After  (Java 10 G1 Full GC): multiple threads, dramatically shorter worst-case pause\n# This brings G1 Full GC latency in line with Parallel GC for the same scenarios\n    \n```\n\n5. Experimental\n\n> Java 10 ships Graal as an experimental JIT compiler\n> Written in Java itself (replaces C2 JIT)\n> Basis for GraalVM native image compilation\n\n#### Enable Graal JIT (Linux/macOS only in Java 10)\n\n```sh\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseJVMCICompiler \\\n     com.example.Main\n```\n#### Compare performance:\n\n```sh\njava -XX:+UnlockExperimentalVMOptions -XX:+UseJVMCICompiler MyApp  # Graal\njava MyApp                                                           # C2 (default)\n```\n\n- Benefits of Graal JIT (experimental in Java 10, better in later versions):\n - Better peak throughput for some workloads\n - Improved speculative optimizations\n - Foundation for Ahead-of-Time compilation (GraalVM native-image)\n\n- Java 10 also introduced: Ahead-of-Time (AOT) compilation (JEP 295)\n- Compile Java classes to native code BEFORE running on the JVM:\n```sh\njaotc --output libHelloWorld.so HelloWorld.class\njava -XX:AOTLibrary=./libHelloWorld.so HelloWorld\n```",
+      "metadata": {
+        "language": "markdown",
+        "id": "7fa663a0-b822-4fe6-95e7-99cf08c37652"
+      }
+    },
+    {
+      "id": "b325e40e-e799-4143-977c-4f038a67b4f5",
+      "cell_type": "markdown",
+      "source": "# var Local Type inference",
+      "metadata": {
+        "language": "markdown",
+        "id": "b325e40e-e799-4143-977c-4f038a67b4f5"
+      }
+    },
+    {
+      "id": "53cc1054-92f3-4095-904d-8101f4faa114",
+      "cell_type": "code",
+      "source": "// Var local type inference\r\nimport java.nio.file.Path;\r\nimport java.time.LocalDate;\r\nimport java.util.ArrayList;\r\nimport java.util.HashMap;\r\nimport java.util.List;\r\n\r\n// Before Java 10 — type repeated on both sides\r\nArrayList<String> list = new ArrayList<String>();\r\nHashMap<String, List<Integer>> map = new HashMap<String, List<Integer>>();\r\n\r\n// Java 10 — var infers the type\r\nvar list = new ArrayList<String>();    // inferred: ArrayList<String>\r\nvar map  = new HashMap<String, List<Integer>>(); // inferred: HashMap<...>\r\nmap.put(\"key\", List.of(1, 2, 3)); // inferred: List<Integer>\r\n\r\n// Primitives and literals\r\nvar i       = 42;           // int\r\nvar d       = 3.14;         // double\r\nvar flag    = true;         // boolean\r\nvar c       = 'A';          // char\r\nvar name    = \"Hello\";      // String\r\nvar pi      = Math.PI;      // double\r\n\r\n// Object construction\r\nvar sb      = new StringBuilder();    // StringBuilder\r\nvar path    = Path.of(\"/tmp/data\");  // Path\r\nvar now     = LocalDate.now();         // LocalDate\r\n\r\n// Array\r\nvar arr     = new int[]{1, 2, 3};    // int[]\r\n\r\n// var infers the most specific type — intersection types too\r\nvar stream  = list.stream();           // Stream<String>\r\nvar entry   = map.entrySet().iterator().next(); // Map.Entry<String, List<Integer>>",
+      "metadata": {
+        "language": "java",
+        "id": "53cc1054-92f3-4095-904d-8101f4faa114",
+        "executionSummary": {
+          "executionOrder": 9,
+          "success": true
+        }
+      },
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "id": "b93e6135-519d-40f0-93c2-5fef8358e4f8",
+      "cell_type": "code",
+      "source": "List<String> names = List.of(\"Alice\", \"Bob\", \"Carol\");\r\n\r\n// Enhanced for loop\r\nfor (var name : names) {\r\n    System.out.println(name.toUpperCase()); // name is String\r\n}\r\n\r\n// Traditional for loop\r\nfor (var i = 0; i < names.size(); i++) {\r\n    System.out.println(names.get(i));\r\n}\r\n\r\n// Iterate map entries cleanly\r\nMap<String, Integer> scores = Map.of(\"Alice\", 90, \"Bob\", 85);\r\nfor (var entry : scores.entrySet()) {\r\n    // entry is Map.Entry<String, Integer> — no verbose declaration\r\n    System.out.println(entry.getKey() + \" → \" + entry.getValue());\r\n}\r\n\r\n// var in try-with-resources\r\ntry (var in  = new FileInputStream(\"C:\\\\SourceCode\\\\Learning\\\\MyRepos\\\\Polyglot\\\\Java\\\\learning-modules\\\\programmers-bible\\\\java-notebooks\\\\java_upgrades\\\\input.txt\");\r\n     var out = new FileOutputStream(\"C:\\\\SourceCode\\\\Learning\\\\MyRepos\\\\Polyglot\\\\Java\\\\learning-modules\\\\programmers-bible\\\\java-notebooks\\\\java_upgrades\\\\output.txt\")) {\r\n    in.transferTo(out);\r\n}",
+      "metadata": {
+        "language": "java",
+        "id": "b93e6135-519d-40f0-93c2-5fef8358e4f8",
+        "executionSummary": {
+          "executionOrder": 5,
+          "success": true
+        }
+      },
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "ALICE\r\nBOB\r\nCAROL\r\nAlice\r\nBob\r\nCarol\r\nAlice ? 90\r\nBob ? 85\r\n"
+          },
+          "metadata": {},
+          "execution_count": 5
+        }
+      ]
+    },
+    {
+      "id": "7ab1859c-dc99-4bda-b977-e5065ebe558b",
+      "cell_type": "code",
+      "source": "// var can infer an anonymous class type — impossible with explicit types\r\n// This gives access to the anonymous class's extra methods!\r\nvar obj = new Object() {\r\n    String name = \"anonymous\";\r\n    int value    = 42;\r\n    String describe() { return name + \"=\" + value; }\r\n};\r\nSystem.out.println(obj.name);       // \"anonymous\" — accessible!\r\nSystem.out.println(obj.describe()); // \"anonymous=42\"\r\n// With Object obj = new Object(){...} the extra members are inaccessible\r\n\r\n// Useful for local record-like tuples without a class\r\nvar result = new Object() {\r\n    final int    count    = getCount();\r\n    final double average  = getAverage();\r\n\r\n    public int getCount() { return 100; }\r\n    public double getAverage() { return 75.5; }\r\n};\r\nSystem.out.printf(\"count=%d avg=%.2f%n\", result.count, result.average);",
+      "metadata": {
+        "language": "java",
+        "id": "7ab1859c-dc99-4bda-b977-e5065ebe558b",
+        "executionSummary": {
+          "executionOrder": 11,
+          "success": true
+        }
+      },
+      "execution_count": 11,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "anonymous\r\nanonymous=42\r\ncount=100 avg=75.50\r\n"
+          },
+          "metadata": {},
+          "execution_count": 11
+        }
+      ]
+    },
+    {
+      "id": "eb2f9514-b935-49c5-af05-cdaf3878e0e9",
+      "cell_type": "code",
+      "source": "// Not allowed in these contexts:\r\n\r\n\r\n// ✗ 1. Cannot be used for fields\r\nclass Foo {\r\n    // var x = 10;  ← compile error — only local variables\r\n}\r\n\r\n// ✗ 2. Cannot be used for method parameters\r\n// void process(var input) { }  ← compile error\r\n\r\n// ✗ 3. Cannot be used for return types\r\n// var getValue() { return 42; }  ← compile error\r\n\r\n// ✗ 4. Cannot be initialised to null (type is unknown)\r\n// var x = null;  ← compile error\r\n\r\n// ✗ 5. Cannot be used without initialiser\r\n// var x;  ← compile error\r\n\r\n// ✗ 6. Cannot be used with array initialiser shorthand\r\n// var arr = {1, 2, 3};  ← compile error (use new int[]{1,2,3})\r\n\r\n// ✗ 7. Cannot be used in lambda (parameter types)\r\n// var fn = (var x) -> x * 2;  ← error in Java 10 (allowed in Java 11)\r\n\r\n// ✗ 8. Cannot be used in catch variable\r\n// try {} catch (var e) {}  ← error in Java 10 (allowed in Java 11? No, still not)\r\n\r\n// ✓ var is a reserved TYPE NAME, not a keyword\r\n// So this is still valid (though confusing):\r\nint var = 10;      // var as variable name — legal but discouraged\r\nvoid var() {}      // var as method name — legal but discouraged",
+      "metadata": {
+        "language": "java",
+        "id": "eb2f9514-b935-49c5-af05-cdaf3878e0e9",
+        "executionSummary": {
+          "executionOrder": 12,
+          "success": true
+        }
+      },
+      "execution_count": 12,
+      "outputs": []
+    },
+    {
+      "id": "75c429e9-df3f-4853-92c4-ae64bec252af",
+      "cell_type": "code",
+      "source": "import java.util.Map;\r\nimport java.util.List;\r\nimport java.util.Optional;\r\nimport java.util.stream.Stream;\r\nimport java.util.stream.Collectors;\r\nimport java.net.http.HttpRequest;\r\nimport java.net.URI;\r\nimport java.io.FileInputStream;\r\nimport java.io.FileOutputStream;\r\n\r\n// Reduces boilerplate with complex generic types\r\n// Before:\r\nMap<String, Map<Integer, List<String>>> nested =\r\n    new HashMap<String, Map<Integer, List<String>>>();\r\n\r\n// After:\r\nvar nested = new HashMap<String, Map<Integer, List<String>>>();\r\n\r\n// Works well with streams — infers intermediate types\r\nvar grouped = Stream.of(\"apple\", \"ant\", \"bat\", \"bee\")\r\n    .collect(Collectors.groupingBy(s -> s.charAt(0)));\r\n// Map<Character, List<String>> — inferred automatically\r\n\r\n// Optional — infers full Optional type\r\nvar opt = Optional.of(\"hello\"); // Optional<String>\r\nvar val = opt.map(String::toUpperCase).orElse(\"default\");\r\n\r\n// Useful when RHS is verbose (Builder pattern)\r\nvar request = HttpRequest.newBuilder()\r\n    .uri(URI.create(\"https://api.example.com\"))\r\n    .GET()\r\n    .build(); // HttpRequest — no need to repeat type\r\n\r\n// Good practice: use var when the type is obvious from context\r\n// var users = userRepository.findAll();   // obvious from method name\r\n// var count = users.size();               // obviously int\r\n// Avoid when type is not obvious without the RHS:\r\n// var x = process();  ← what type is this?  Better to be explicit.",
+      "metadata": {
+        "language": "java",
+        "id": "75c429e9-df3f-4853-92c4-ae64bec252af",
+        "executionSummary": {
+          "executionOrder": 28,
+          "success": true
+        }
+      },
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "id": "a7f7fb13-4528-45e2-933b-18b906e33503",
+      "cell_type": "code",
+      "source": "// var infers the STATIC compile-time type — not runtime type\r\n\r\nimport java.lang.Integer;\r\nimport java.lang.Number;\r\n\r\nNumber n = Integer.valueOf(42);   // explicit — type is Number\r\nvar v = Integer.valueOf(42);   // var — type is Integer (more specific)\r\n\r\n// Ternary expressions: var infers the common supertype\r\nboolean condition = true;\r\nvar x = condition ? \"hello\" : \"world\"; // String\r\nvar y = condition ? 1 : 2.0;            // double (widened)\r\nvar z = condition ? 1 : \"str\";          // Serializable & Comparable (common)\r\n\r\n// Once inferred, type is FIXED — this fails:\r\nvar name = \"Alice\"; // String\r\n// name = 42;  ← compile error — cannot assign int to String",
+      "metadata": {
+        "language": "java",
+        "id": "a7f7fb13-4528-45e2-933b-18b906e33503",
+        "executionSummary": {
+          "executionOrder": 20,
+          "success": true
+        }
+      },
+      "execution_count": 20,
+      "outputs": []
+    },
+    {
+      "id": "0928826a-e936-434b-8a24-6ae2051335a6",
+      "cell_type": "markdown",
+      "source": "## Collections API changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "0928826a-e936-434b-8a24-6ae2051335a6"
+      }
+    },
+    {
+      "id": "3b3cb9dd-182c-400f-9c0b-a6b942cd0033",
+      "cell_type": "code",
+      "source": "// Create unmodifiable copies of any collection\r\nList<String> mutable = new ArrayList<>(Arrays.asList(\"a\", \"b\", \"c\"));\r\nList<String> immutable = List.copyOf(mutable);\r\n\r\n// immutable.add(\"d\");    ← UnsupportedOperationException\r\n// immutable.remove(\"a\"); ← UnsupportedOperationException\r\n// immutable.set(0,\"x\");  ← UnsupportedOperationException\r\n\r\n// Changes to original do NOT affect the copy\r\nmutable.add(\"d\");\r\nSystem.out.println(immutable); // [a, b, c] — unaffected\r\n\r\n// Set.copyOf\r\nSet<Integer> mutableSet = new HashSet<>(Set.of(1,2,3));\r\nSet<Integer> immutableSet = Set.copyOf(mutableSet);\r\n\r\n// Map.copyOf\r\nMap<String, Integer> mutableMap = new HashMap<>();\r\nmutableMap.put(\"a\", 1); mutableMap.put(\"b\", 2);\r\nMap<String, Integer> immutableMap = Map.copyOf(mutableMap);\r\n\r\n// Rules — same as List.of / Set.of / Map.of:\r\n// - Null elements are NOT allowed (NullPointerException if source has null)\r\n// - Duplicate keys in Set/Map source → may throw IllegalArgumentException\r\n// - Iteration order is NOT guaranteed for Set/Map\r\n// - Optimisation: if the source is already an unmodifiable collection\r\n//   of the same type, the JVM MAY return the same instance (no copy)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "8f8aa666-3035-4348-a7e5-66928adf39cf",
+      "cell_type": "code",
+      "source": "// New terminal operations that collect directly into unmodifiable collections\r\nList<String> names = List.of(\"Alice\", \"Bob\", \"Carol\", \"Dave\");\r\n\r\n// toUnmodifiableList\r\nList<String> filtered = names.stream()\r\n    .filter(n -> n.length() > 3)\r\n    .collect(Collectors.toUnmodifiableList());\r\n// [Alice, Carol, Dave] — unmodifiable\r\n\r\n// toUnmodifiableSet\r\nSet<Integer> lengths = names.stream()\r\n    .map(String::length)\r\n    .collect(Collectors.toUnmodifiableSet());\r\n// {3, 4, 5} — unmodifiable Set (order not guaranteed)\r\n\r\n// toUnmodifiableMap(keyMapper, valueMapper)\r\nMap<String, Integer> nameLengths = names.stream()\r\n    .collect(Collectors.toUnmodifiableMap(\r\n        n -> n,            // key: the name\r\n        String::length     // value: its length\r\n    ));\r\n// {Alice=5, Bob=3, Carol=5, Dave=4} — unmodifiable\r\n\r\n// toUnmodifiableMap with merge function (for duplicate keys)\r\nMap<Integer, String> byLength = names.stream()\r\n    .collect(Collectors.toUnmodifiableMap(\r\n        String::length,\r\n        n -> n,\r\n        (a, b) -> a + \",\" + b  // merge duplicates\r\n    ));\r\n// {3=Bob, 4=Dave, 5=Alice,Carol}\r\n\r\n// Comparison: old vs new\r\n// Old Java 8 way:\r\nCollections.unmodifiableList(\r\n    names.stream().filter(n->n.length()>3).collect(Collectors.toList()));\r\n// New Java 10 way:\r\nnames.stream().filter(n->n.length()>3).collect(Collectors.toUnmodifiableList());",
+      "metadata": {
+        "language": "java",
+        "id": "8f8aa666-3035-4348-a7e5-66928adf39cf",
+        "executionSummary": {
+          "executionOrder": 29,
+          "success": true
+        }
+      },
+      "execution_count": 29,
+      "outputs": []
+    },
+    {
+      "id": "a8ae72fb-fdd3-438e-b371-021d1537fce5",
+      "cell_type": "markdown",
+      "source": "## Optional API changes",
+      "metadata": {
+        "language": "markdown",
+        "id": "a8ae72fb-fdd3-438e-b371-021d1537fce5"
+      }
+    },
+    {
+      "id": "2a387524-6fea-4c0e-be27-5967366a2898",
+      "cell_type": "code",
+      "source": "Optional<String> present = Optional.of(\"Alice\");\r\nOptional<String> empty   = Optional.empty();\r\n\r\n// New no-arg orElseThrow() — preferred over get()\r\nString val1 = present.orElseThrow(); // \"Alice\"\r\n// empty.orElseThrow();  ← throws NoSuchElementException\r\n\r\n// Compare the three ways to \"get or throw\":\r\npresent.get();           // Java 8 — ambiguous intent, get() sounds safe\r\npresent.orElseThrow();   // Java 10 — explicitly states: throw if empty ✓\r\npresent.orElseThrow(() -> new RuntimeException(\"not found\")); // Java 8 custom\r\n\r\n// Works on OptionalInt, OptionalLong, OptionalDouble too\r\nOptionalInt    oi = OptionalInt.of(42);\r\nOptionalLong   ol = OptionalLong.of(100L);\r\nOptionalDouble od = OptionalDouble.of(3.14);\r\n\r\nint    i = oi.orElseThrow(); // 42\r\nlong   l = ol.orElseThrow(); // 100\r\ndouble d = od.orElseThrow(); // 3.14\r\n\r\n// Practical usage pattern\r\nUser user = userRepository.findById(id)\r\n    .orElseThrow(); // clear: \"this MUST be present, or fail\"\r\n\r\n// vs get() which looks like it might safely return null or similar",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "f1d1d08a-0460-4d25-9cf7-bd7b9c46d1d2",
+      "cell_type": "code",
+      "source": "// Java 14 formally deprecated Optional.get() in favour of orElseThrow()\r\n// (The deprecation happened in Java 14, but the replacement is Java 10)\r\n// The intent of the author is clearer with orElseThrow():\r\n\r\n// get() looks innocent — like accessing a field\r\nString s1 = opt.get(); // could surprise you if opt is empty\r\n\r\n// orElseThrow() is explicit — reader knows it will throw on empty\r\nString s2 = opt.orElseThrow(); // intent is clear\r\n\r\n// In an IDE, orElseThrow() shows up in autocomplete as a valid\r\n// terminal operation alongside orElse/orElseGet, making the API\r\n// more discoverable and consistent.\r\n\r\n// Recommended migration:\r\n// opt.get()  →  opt.orElseThrow()",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "cd5b76cc-7ed6-4c13-8375-a089db295ea7",
+      "cell_type": "markdown",
+      "source": "## Collectors API changes\r\n\r\n_(Nothing new in streams)_",
+      "metadata": {
+        "language": "markdown",
+        "id": "cd5b76cc-7ed6-4c13-8375-a089db295ea7"
+      }
+    },
+    {
+      "id": "d20faf46-8c26-4d43-bbf0-896dba4f5279",
+      "cell_type": "code",
+      "source": "// Full reference with all signatures\r\n\r\nimport java.util.stream.*;\r\n\r\n// 1. Collectors.toUnmodifiableList()\r\n// static <T> Collector<T, ?, List<T>> toUnmodifiableList();\r\n\r\n// 2. Collectors.toUnmodifiableSet()\r\n// static <T> Collector<T, ?, Set<T>> toUnmodifiableSet();\r\n\r\n// 3a. Collectors.toUnmodifiableMap(keyMapper, valueMapper)\r\n// static <T,K,U> Collector<T,?,Map<K,U>>\r\n//     toUnmodifiableMap(Function<? super T,? extends K> keyMapper,\r\n//                       Function<? super T,? extends U> valueMapper)\r\n\r\n// 3b. With merge function for duplicate keys\r\n// static <T,K,U> Collector<T,?,Map<K,U>>\r\n//     toUnmodifiableMap(Function keyMapper,\r\n//                       Function valueMapper,\r\n//                       BinaryOperator<U> mergeFunction)\r\n\r\n// Example — pipeline to immutable result in one shot\r\nvar result = IntStream.rangeClosed(1, 5)\r\n    .boxed()\r\n    .collect(Collectors.toUnmodifiableList());\r\nSystem.out.println(result);\r\n// [1, 2, 3, 4, 5] — unmodifiable",
+      "metadata": {
+        "language": "java",
+        "id": "d20faf46-8c26-4d43-bbf0-896dba4f5279",
+        "executionSummary": {
+          "executionOrder": 26,
+          "success": true
+        }
+      },
+      "execution_count": 26,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": "[1, 2, 3, 4, 5]\r\n"
+          },
+          "metadata": {},
+          "execution_count": 26
+        }
+      ]
+    },
+    {
+      "id": "f418835c-1195-4d49-910e-471197965a02",
+      "cell_type": "code",
+      "source": "// var pairs naturally with streams to reduce type noise\r\nvar words = List.of(\"hello\", \"world\", \"java\", \"ten\");\r\n\r\nvar grouped = words.stream()\r\n    .collect(Collectors.groupingBy(String::length));\r\n// Map<Integer, List<String>> — inferred\r\n\r\nvar stats = words.stream()\r\n    .collect(Collectors.summarizingInt(String::length));\r\n// IntSummaryStatistics — inferred\r\n\r\nvar joined = words.stream()\r\n    .collect(Collectors.joining(\", \"));\r\n// String — inferred\r\n\r\n// Avoid var when type is not obvious\r\n// var x = compute(); // ← what is x? Unclear without return type",
+      "metadata": {
+        "language": "java",
+        "id": "f418835c-1195-4d49-910e-471197965a02",
+        "executionSummary": {
+          "executionOrder": 27,
+          "success": true
+        }
+      },
+      "execution_count": 27,
+      "outputs": []
+    },
+    {
+      "id": "3f44ed08-36a4-4c94-9e8c-d8baa17c8fc1",
+      "cell_type": "code",
+      "source": "// NEW in Java 10: Reader.transferTo(Writer)\r\n// Reads all chars from this Reader and writes to the given Writer\r\n// Returns the number of chars transferred\r\n// Analogous to InputStream.transferTo(OutputStream) added in Java 9\r\n\r\ntry (var reader = new FileReader(\"input.txt\");\r\n     var writer = new FileWriter(\"output.txt\")) {\r\n    long chars = reader.transferTo(writer);\r\n    System.out.println(\"Transferred: \" + chars + \" chars\");\r\n}\r\n\r\n// Copy classpath resource to a String\r\ntry (var reader = new InputStreamReader(\r\n         MyClass.class.getResourceAsStream(\"/template.txt\"))) {\r\n    var sw = new StringWriter();\r\n    reader.transferTo(sw);\r\n    String content = sw.toString();\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "b41c5523-6e67-44cf-81a7-5023ccba3244",
+      "cell_type": "code",
+      "source": "// Thread.destroy() and Thread.stop(Throwable) — finally deprecated for removal\r\n// (Thread.stop() no-arg was deprecated since Java 1.2)\r\n// Marked @Deprecated(forRemoval=true) in Java 10\r\n\r\n// Use interruption instead:\r\nThread t = new Thread(() -> {\r\n    while (!Thread.currentThread().isInterrupted()) {\r\n        doWork();\r\n    }\r\n});\r\nt.start();\r\nt.interrupt(); // cooperative stopping — preferred over stop()\r\n\r\n// Security Manager deprecated eventually (Java 17 final deprecation)\r\n// Java 10: still active, but usage discouraged in new code\r\n\r\n// finalize() methods on JDK classes deprecated\r\n// (FileInputStream.finalize(), FileOutputStream.finalize(), etc.)\r\n// Use try-with-resources instead of relying on finalizers:\r\ntry (var fis = new FileInputStream(\"file.txt\")) {\r\n    // resource closed automatically — no finalize needed\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}

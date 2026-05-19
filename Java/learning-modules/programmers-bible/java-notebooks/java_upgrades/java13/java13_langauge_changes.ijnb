@@ -1,0 +1,215 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "b93d7d44-8063-4010-92fa-839b5f6ebb85",
+      "cell_type": "markdown",
+      "source": "# Java 13 Changes\n\n## Language Changes\n\n### Preview\n\n- Text Blocks\n\n```sh\n # Compile\njavac --enable-preview --release 13 MyApp.java\n\n# Run\njava --enable-preview MyApp\n\n# Maven — pom.xml\n<plugin>\n  <groupId>org.apache.maven.plugins</groupId>\n  <artifactId>maven-compiler-plugin</artifactId>\n  <configuration>\n    <release>13</release>\n    <compilerArgs><arg>--enable-preview</arg></compilerArgs>\n  </configuration>\n</plugin>\n\n# Gradle — build.gradle\ntasks.withType(JavaCompile) {\n    options.compilerArgs += [\"--enable-preview\"]\n    options.release = 13\n}\napplication { applicationDefaultJvmArgs = [\"--enable-preview\"] }\n```\n- yield in Spring Expression\n\n    - Java 13 refines the switch expression preview from Java 12 with one critical change: break value is replaced by yield value.\n    - This eliminates ambiguity with the regular break statement and makes block-based switch arms cleaner.\n    - Everything else from Java 12 switch expressions carries forward.\n\n### Final changes\n\n- API Changes\n    - String\n    - Files API\n\n## Platform Changes\n\n- Socket API Re implemented\n    - The underlying implementation of java.net.Socket and java.net.ServerSocket has been completely rewritten. \n    - The old implementation — PlainSocketImpl, dating back to JDK 1.0 — is replaced with a new, modern NioSocketImpl. No API changes required — transparent improvement.\n- Dynamic CDS\n    - Extends Application Class-Data Sharing (AppCDS) to allow the CDS archive to be created dynamically at JVM exit — eliminating the need for a separate archive-generation step. \n    - One command records and saves the archive automatically.\n\n```sh\n\n// ── BEFORE Java 13 (Java 10-12 AppCDS — 3 steps) ──────────────\n\n# Step 1: Run app to collect class list\njava -XX:+UseAppCDS \\\n     -XX:DumpLoadedClassList=classes.lst \\\n     -cp myapp.jar com.example.Main\n\n# Step 2: Create archive from class list\njava -XX:+UseAppCDS \\\n     -Xshare:dump \\\n     -XX:SharedClassListFile=classes.lst \\\n     -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar\n\n# Step 3: Run with archive\njava -XX:+UseAppCDS \\\n     -Xshare:on \\\n     -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar com.example.Main\n\n// ── AFTER Java 13 (Dynamic CDS — 2 steps) ─────────────────────\n\n# Step 1: Run app — archive created AUTOMATICALLY on exit\njava -XX:ArchiveClassesAtExit=myapp.jsa \\\n     -cp myapp.jar com.example.Main\n# JVM runs normally AND records classes → dumps archive at exit\n\n# Step 2: Run with archive (same as before)\njava -XX:SharedArchiveFile=myapp.jsa \\\n     -cp myapp.jar com.example.Main\n# Much faster startup!\n\n// Archives include: all classes loaded during the recording run\n// Application classes + JDK classes + library classes — everything\n\n\n---\n\n# Layered archives: base JDK archive + application archive\n# The JDK ships a default base archive (classes.jsa)\n# Build on top of it for app classes\n\n# Build app archive on top of default JDK archive:\njava -Xshare:on \\                                      # use JDK base archive\n     -XX:ArchiveClassesAtExit=myapp-top.jsa \\          # add app layer\n     -cp myapp.jar com.example.Main\n\n# Run with both layers:\njava -XX:SharedArchiveFile=myapp-top.jsa \\\n     -cp myapp.jar com.example.Main\n\n# Measure startup improvement:\ntime java -XX:SharedArchiveFile=myapp.jsa -cp myapp.jar com.example.Main\ntime java -Xshare:off -cp myapp.jar com.example.Main\n# Typical: 20-50% startup time reduction for large apps\n\n// What gets archived:\n// ✓ All loaded classes (bytecode representation)\n// ✓ Verified class metadata\n// ✓ Resolved constant pool entries\n// ✓ Shared across multiple JVM processes (memory-mapped)\n// ✗ JIT-compiled code — not included (use AOT for that)\n```\n\n- ZGC: Uncommit Unused Memory\n    -  Java 11 introduced ZGC but it never returned unused heap memory to the OS — a critical omission for containerised workloads.\n    - Java 13 fixes this: ZGC now proactively uncommits unused memory pages back to the OS, similar to what G1 gained in Java 12.\n\n\n```sh\n\n// Java 11 ZGC: allocated heap memory was NEVER returned to OS\n// Memory footprint grew to -Xmx and stayed there forever\n// Problematic for Docker/Kubernetes memory limits\n\n// Java 13 ZGC: uncommits unused memory during GC cycles\n// Pages unused for longer than ZUncommitDelay are returned to OS\n\n# Enable ZGC with memory uncommit (default ON in Java 13+)\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseZGC \\\n     -Xms256m \\\n     -Xmx4g \\\n     com.example.App\n\n# ZGC uncommit is ON by default in Java 13\n# Control it with:\njava -XX:+UseZGC \\\n     -XX:+UnlockExperimentalVMOptions \\\n     -XX:ZUncommitDelay=300 \\          # wait 300s before uncommitting (default)\n     com.example.App\n\n# Disable uncommit (revert to Java 11 behaviour):\njava -XX:+UseZGC \\\n     -XX:+UnlockExperimentalVMOptions \\\n     -XX:-ZUncommit \\                   # disable uncommit\n     com.example.App\n\n// How it works:\n// ZGC tracks memory pages that haven't been accessed for ZUncommitDelay seconds\n// During a GC cycle, those pages are unmapped from the JVM\n// The OS gets the physical memory back\n// JVM can reclaim from OS again if needed (elastic)\n```\n\n```sh\n\n// Scenario: Java app in Docker with 512m memory limit\n//           App has bursty traffic — high during day, quiet at night\n\n// Java 11 ZGC:                    Java 13 ZGC:\n// ━━━━━━━━━━━━━                   ━━━━━━━━━━━━━\n// Peak: 400m used       →         Peak: 400m used\n// After quiet: 400m     →         After quiet: ~50m used\n// OS memory: consumed   →         OS memory: returned ✓\n// OOMKilled risk: HIGH  →         OOMKilled risk: LOW\n\n// For Kubernetes — pods can now be more memory-efficient:\n// Request: 128m  (baseline during quiet periods)\n// Limit:   512m  (burst during peak)\n// ZGC manages the range elastically\n\n// Full ZGC + container config:\njava -XX:+UseZGC \\\n     -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseContainerSupport \\          # respects cgroup memory limits\n     -XX:MaxRAMPercentage=75.0 \\         # use 75% of container RAM\n     -XX:ZUncommitDelay=60 \\            # uncommit after 60s idle\n     -Xlog:gc*:file=zgc.log \\\n     com.example.App\n```\n\n- Unicode support\n\n```sh\n\n// Java 13 upgrades from Unicode 11 (Java 12) to Unicode 12.1\n// Adds 554 new characters, including:\n// - New emoji (face with uneven eyes, pinching hand, etc.)\n// - Yezidi script, Chorasmian script\n// - Chess symbols, additional CJK characters\n\n// New emoji examples (Unicode 12.0/12.1)\nSystem.out.println(\"\\uD83E\\uDD90\"); // 🦐 Shrimp\nSystem.out.println(\"\\uD83E\\uDDB7\"); // 🦷 Tooth\nSystem.out.println(\"\\uD83E\\uDDB8\"); // 🦸 Superhero\nSystem.out.println(\"\\uD83E\\uDD33\"); // 🤳 Selfie\n\n// Character.getType() / isAlphabetic() updated for new codepoints\n\n// Locale data: CLDR 36 integrated\n// More accurate date/time/number formatting per locale\nNumberFormat.getCurrencyInstance(Locale.forLanguageTag(\"en-IN\"))\n    .format(1_00_000); // \"₹1,00,000.00\" — Indian Rupee formatting\n\n```\n\n## Removal\n\n- Additional improvements to security\n\n```sh\n\n// ── Deprecated in Java 13 ─────────────────────────────────────\n\n// 1. javax.security.cert package — deprecated for removal\n// Was already deprecated since Java 9, now marked forRemoval=true\n// Use java.security.cert instead\n@Deprecated(since=\"9\", forRemoval=true)\n// javax.security.cert.X509Certificate  ← use java.security.cert.X509Certificate\n\n// Migration:\n// javax.security.cert.X509Certificate  →  java.security.cert.X509Certificate\n// javax.security.cert.Certificate      →  java.security.cert.Certificate\n// javax.security.cert.CertificateException → java.security.cert.CertificateException\n\n// 2. Thread.suspend() and Thread.resume() — documented as dangerous\n// Deadlock-prone methods further discouraged\n\n// ── Removed in Java 13 ────────────────────────────────────────\n\n// rmic tool — Remote Method Invocation compiler\n// Deprecated in Java 11, REMOVED in Java 13\n// Used to generate stubs for Java RMI (rare in modern apps)\n// If still needed: generate stubs manually or use alternative RPC\n\n// Note: JavaFX was removed from JDK in Java 11\n// Java 13 fully transitions to OpenJFX as separate distribution\n// Available at: https://openjfx.io\n```\n\n## Tooling Improvements\n\n```sh\n\nTooling\n// 1. VM anonymous classes replaced by hidden classes (groundwork)\n// Lambdas and method references use VM-anonymous classes internally\n// Java 13 starts the transition to \"hidden classes\" (finalised Java 15)\n\n// 2. JFR (Java Flight Recorder) enhancements\n// New events added:\n// - jdk.ObjectAllocationInNewTLAB\n// - jdk.ObjectAllocationOutsideTLAB\n// Better allocation profiling without safepoint bias\n\n# Record allocation events:\njava -XX:StartFlightRecording=\\\n         filename=alloc.jfr,\\\n         settings=profile,\\\n         duration=60s \\\n     com.example.App\n\n// 3. Improved NullPointerException messages (groundwork)\n// Java 13 internal work toward \"Helpful NullPointerExceptions\"\n// (finalised in Java 14 — JEP 358)\n// e.g.: \"Cannot invoke String.length() because str is null\"\n\n// 4. Startup performance improvements\n// Dynamic CDS (JEP 350) contributes significantly\n// Additional JVM internal optimisations reduce startup overhead\n\n// 5. GraalVM compiler improvements\n// -XX:+UseJVMCICompiler continues to improve\n// Graal JIT integrated improvements — better peak performance\n\n```",
+      "metadata": {
+        "language": "markdown",
+        "id": "b93d7d44-8063-4010-92fa-839b5f6ebb85"
+      }
+    },
+    {
+      "id": "d85d4a4d-e199-48cd-a790-f1c56ac24c77",
+      "cell_type": "markdown",
+      "source": "## Text blocks",
+      "metadata": {
+        "language": "markdown",
+        "id": "d85d4a4d-e199-48cd-a790-f1c56ac24c77"
+      }
+    },
+    {
+      "id": "a2daea1f-93a7-46ac-90f0-57057c86e3eb",
+      "cell_type": "code",
+      "source": "// Old way — string concatenation hell\r\nString html = \"<html>\\n\" +\r\n               \"    <body>\\n\" +\r\n               \"        <p>Hello, World</p>\\n\" +\r\n               \"    </body>\\n\" +\r\n               \"</html>\\n\";\r\n\r\n// Java 13 Text Block — exactly as written, no escapes needed\r\nString html = \"\"\"\r\n              <html>\r\n                  <body>\r\n                      <p>Hello, World</p>\r\n                  </body>\r\n              </html>\r\n              \"\"\";\r\n// Result:                          Note: closing \"\"\" sets the indent baseline\r\n// <html>                           Content indented PAST closing \"\"\" is preserved\r\n//     <body>                       Content up to closing \"\"\" column is stripped\r\n//         <p>Hello, World</p>\r\n//     </body>\r\n// </html>\r\n// (trailing newline included)\r\n\r\n// Opening \"\"\" must be followed by newline — NOT inline:\r\n// String s = \"\"\"hello\"\"\";  ← COMPILE ERROR\r\n// String s = \"\"\"          ← OK — content on next line\r\n//            hello\r\n//            \"\"\";",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "bbddb14b-ed99-4c3e-8fa3-8c4bf6a76e56",
+      "cell_type": "code",
+      "source": "// The compiler strips COMMON leading whitespace from all lines\r\n// Determined by the position of the closing \"\"\"\r\n\r\n// Case 1: closing \"\"\" on its own line, aligned with content\r\nString a = \"\"\"\r\n            line1\r\n            line2\r\n            \"\"\";\r\n// \"line1\\nline2\\n\"  — 12 spaces stripped from each line\r\n\r\n// Case 2: closing \"\"\" further left — adds more stripping\r\nString b = \"\"\"\r\n            line1\r\n            line2\r\n        \"\"\";          // closing \"\"\" at column 8 → strips 8 spaces\r\n// \"    line1\\n    line2\\n\"  — 4 spaces of content remain\r\n\r\n// Case 3: closing \"\"\" at column 0 — no stripping of content indent\r\nString c = \"\"\"\r\n            line1\r\n            line2\r\n\"\"\";\r\n// \"            line1\\n            line2\\n\"  — full indent preserved\r\n\r\n// Case 4: trailing whitespace on lines is ALWAYS stripped\r\n// Use \\s escape (Java 14) to preserve trailing space: \"word\\s\"\r\n// In Java 13 preview, trailing spaces are always removed\r\n\r\n// Algorithm: incidental whitespace = min leading spaces across all non-blank lines\r\n// That amount is stripped from every line\r\n// Closing \"\"\" line is included in this calculation",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "88f98e67-c192-4b70-9946-6f3f3f09c4b0",
+      "cell_type": "code",
+      "source": "// ── JSON ──────────────────────────────────────────\r\nString json = \"\"\"\r\n        {\r\n            \"name\": \"Alice\",\r\n            \"age\": 30,\r\n            \"roles\": [\"ADMIN\", \"USER\"],\r\n            \"address\": {\r\n                \"city\": \"Bengaluru\",\r\n                \"country\": \"India\"\r\n            }\r\n        }\r\n        \"\"\";\r\n\r\n// ── SQL ───────────────────────────────────────────\r\nString sql = \"\"\"\r\n        SELECT u.id, u.name, u.email,\r\n               o.total, o.created_at\r\n        FROM users u\r\n        JOIN orders o ON o.user_id = u.id\r\n        WHERE u.active = true\r\n          AND o.created_at > :since\r\n        ORDER BY o.created_at DESC\r\n        LIMIT 50\r\n        \"\"\";\r\n\r\n// ── HTML template ────────────────────────────────\r\nString template = \"\"\"\r\n        <!DOCTYPE html>\r\n        <html lang=\"en\">\r\n        <head><title>Report</title></head>\r\n        <body>\r\n            <h1>Monthly Report</h1>\r\n            <p>Generated: %s</p>\r\n        </body>\r\n        </html>\r\n        \"\"\".formatted(LocalDate.now()); // formatted() — new String method in Java 13\r\n\r\n// ── YAML ─────────────────────────────────────────\r\nString yaml = \"\"\"\r\n        server:\r\n          port: 8080\r\n          host: localhost\r\n        database:\r\n          url: jdbc:postgresql://db:5432/mydb\r\n          pool-size: 10\r\n        \"\"\";",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "5c7d4098-b87d-4e46-8977-79092aead510",
+      "cell_type": "code",
+      "source": "// Standard Java escape sequences still work inside text blocks\r\nString s1 = \"\"\"\r\n        Tab:\\there\r\n        Quote: \\\"embedded\\\"\r\n        Backslash: \\\\path\\\\to\\\\file\r\n        Unicode: \\u00e9\r\n        \"\"\";\r\n\r\n// The \"\"\" delimiter itself — how to include it?\r\n// Escape at least one \" of the three:\r\nString withTriple = \"\"\"\r\n        Here are triple quotes: \\\"\"\"\r\n        and more text\r\n        \"\"\";\r\n// \"Here are triple quotes: \\\"\\\"\\\"\\nand more text\\n\"\r\n\r\n// NEW escape sequences introduced in Java 14 (built on Java 13 preview):\r\n// \\s  — explicit space (prevents trailing space stripping)\r\n// \\   — line continuation (join lines, suppress newline)\r\n// These are NOT in Java 13 preview — added in Java 14 preview\r\n\r\n// Text block type is still String — all String methods work\r\nString text = \"\"\"\r\n        hello\r\n        world\r\n        \"\"\";\r\ntext.length();           // 12 (hello\\nworld\\n)\r\ntext.strip();            // \"hello\\nworld\"\r\ntext.lines().count();    // 2\r\ntext.contains(\"hello\"); // true",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "02d640f7-d39f-43f0-bc3f-b3b6bb34bc14",
+      "cell_type": "code",
+      "source": "// formatted() is a new instance method (Java 13) — equivalent to String.format(this, args)\r\n// Perfect companion to text blocks for templating\r\n\r\nString name    = \"Alice\";\r\nint    age     = 30;\r\nString city    = \"Bengaluru\";\r\n\r\nString report = \"\"\"\r\n        ╔══════════════════════════╗\r\n        ║   User Profile           ║\r\n        ╠══════════════════════════╣\r\n        ║ Name  : %-16s ║\r\n        ║ Age   : %-16d ║\r\n        ║ City  : %-16s ║\r\n        ╚══════════════════════════╝\r\n        \"\"\".formatted(name, age, city);\r\n\r\nSystem.out.print(report);\r\n// ╔══════════════════════════╗\r\n// ║   User Profile           ║\r\n// ╠══════════════════════════╣\r\n// ║ Name  : Alice            ║\r\n// ║ Age   : 30               ║\r\n// ║ City  : Bengaluru        ║\r\n// ╚══════════════════════════╝\r\n\r\n// Compare old way:\r\n// String.format(\"Name: %s\\nAge: %d\", name, age)  — format method on class\r\n// \"Name: %s\\nAge: %d\".formatted(name, age)        — new instance method (Java 13)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "2c5a7471-86c0-434f-ba25-f1ce9f8d0abb",
+      "cell_type": "markdown",
+      "source": "## Yield in Switch",
+      "metadata": {
+        "language": "markdown",
+        "id": "2c5a7471-86c0-434f-ba25-f1ce9f8d0abb"
+      }
+    },
+    {
+      "id": "570643c5-a44f-4665-b25e-fdbb16919e16",
+      "cell_type": "code",
+      "source": "// Java 12 Preview — used \"break value\" in blocks (CHANGED)\r\nint result = switch (day) {\r\n    case MONDAY: break 1;  // ← Java 12 syntax — DEPRECATED in Java 13\r\n    default: break 0;\r\n};\r\n\r\n// Java 13 Preview — uses \"yield\" (CORRECT going forward)\r\nint result = switch (day) {\r\n    case MONDAY: yield 1;  // ← Java 13 syntax — yield produces the value\r\n    default: yield 0;\r\n};\r\n\r\n// Arrow form still uses the expression directly (no yield needed)\r\nint result2 = switch (day) {\r\n    case MONDAY  -> 1;   // no yield for simple arrow expressions\r\n    default      -> 0;\r\n};\r\n\r\n// yield in arrow block — yield IS required when using a block\r\nint result3 = switch (day) {\r\n    case MONDAY -> {\r\n        System.out.println(\"Start of work week\");\r\n        yield 1;           // ← yield required in arrow block\r\n    }\r\n    default -> 0;\r\n};",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "19a6f744-4c9b-4cec-be37-03cb65f2c4ab",
+      "cell_type": "code",
+      "source": "// yield is a RESTRICTED IDENTIFIER (not a keyword)\r\n// Can still be used as method name, variable name (though discouraged)\r\nint yield = 10;           // still valid as variable name\r\nvoid yield() {}           // still valid as method name\r\n\r\n// yield is ONLY valid inside a switch expression (not switch statement)\r\n// yield must produce a value compatible with the switch expression's type\r\n\r\n// Full example — complex block with yield\r\nenum HttpStatus { OK, NOT_FOUND, SERVER_ERROR, REDIRECT }\r\n\r\nHttpStatus status = HttpStatus.NOT_FOUND;\r\n\r\nString message = switch (status) {\r\n    case OK -> \"200 — Success\";\r\n\r\n    case NOT_FOUND -> {\r\n        var code = 404;\r\n        var msg  = \"Not Found\";\r\n        log(\"Client error: \" + code);\r\n        yield code + \" — \" + msg;     // yield from block\r\n    }\r\n\r\n    case SERVER_ERROR -> {\r\n        alertOps();\r\n        yield \"500 — Internal Server Error\";\r\n    }\r\n\r\n    case REDIRECT -> \"3xx — Redirect\";\r\n};\r\n\r\nSystem.out.println(message); // \"404 — Not Found\"",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "5118f03e-a08e-418e-a02f-03044d782e4e",
+      "cell_type": "code",
+      "source": "// The old colon (:) style still works in Java 13\r\n// Now uses yield instead of break value\r\n// Still has fall-through behaviour between cases\r\n\r\nint day = 3;\r\nString type = switch (day) {\r\n    case 1:\r\n    case 7:\r\n        yield \"Weekend\";              // fall-through from case 1\r\n    case 2:\r\n    case 3:\r\n    case 4:\r\n    case 5:\r\n    case 6:\r\n        yield \"Weekday\";              // fall-through from 2,3,4,5\r\n    default:\r\n        yield \"Unknown\";\r\n};\r\nSystem.out.println(type); // \"Weekday\"\r\n\r\n// Exhaustiveness still required for switch expressions:\r\n// All possible values must be handled, or have a default\r\n// Compiler enforces this — no runtime surprise",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "72bf28e6-383b-40c7-9390-28897e7a38e0",
+      "cell_type": "markdown",
+      "source": "## String API",
+      "metadata": {
+        "language": "markdown",
+        "id": "72bf28e6-383b-40c7-9390-28897e7a38e0"
+      }
+    },
+    {
+      "id": "c75e2533-f2b6-4e89-81e1-6cc2e384946c",
+      "cell_type": "code",
+      "source": "// Instance method equivalent of String.format(this, args)\r\n// Cleaner than calling the static String.format()\r\n\r\n// Before Java 13:\r\nString old = String.format(\"Hello, %s! You are %d years old.\", \"Alice\", 30);\r\n\r\n// Java 13:\r\nString result = \"Hello, %s! You are %d years old.\".formatted(\"Alice\", 30);\r\n// \"Hello, Alice! You are 30 years old.\"\r\n\r\n// All format specifiers work identically to String.format()\r\n\"%-10s | %5d | %.2f\".formatted(\"item\", 42, 3.14);\r\n// \"item       |    42 | 3.14\"\r\n\r\n\"%tF\".formatted(LocalDate.now()); // \"2024-06-15\" — date formatting\r\n\"%,d\".formatted(1_000_000);     // \"1,000,000\" — thousands separator\r\n\"%08.2f\".formatted(3.14);       // \"00003.14\"  — zero-padded\r\n\"%X\".formatted(255);            // \"FF\"        — hex uppercase\r\n\r\n// Best with text blocks — inline template replacement\r\nString html = \"\"\"\r\n        <div class=\"user\">\r\n            <span class=\"name\">%s</span>\r\n            <span class=\"score\">%d</span>\r\n        </div>\r\n        \"\"\".formatted(\"Alice\", 95);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "fd174f22-4f2f-449f-a9ea-a37e02872f9c",
+      "cell_type": "code",
+      "source": "// Removes INCIDENTAL (common leading) whitespace from each line\r\n// Same algorithm the compiler applies to text blocks\r\n// Useful for processing dynamically-built multi-line strings\r\n\r\n// Removes common leading whitespace:\r\nString s = \"    line1\\n    line2\\n    line3\";\r\ns.stripIndent();\r\n// \"line1\\nline2\\nline3\"   ← 4 spaces stripped from each line\r\n\r\n// Mixed indentation — strips only the common amount\r\nString mixed = \"      line1\\n    line2\\n      line3\";\r\nmixed.stripIndent();\r\n// \"  line1\\nline2\\n  line3\"  ← only 4 spaces stripped (minimum)\r\n\r\n// Trailing whitespace on each line is also stripped\r\nString trailing = \"  hello   \\n  world   \";\r\ntrailing.stripIndent();\r\n// \"hello\\nworld\"  ← both leading AND trailing stripped per line\r\n\r\n// No trailing newline added (unlike text block closing \"\"\")\r\n\"  abc\".stripIndent();  // \"abc\" (no \\n appended)\r\n\r\n// Use case: normalise indented strings loaded from config, files\r\nString config = loadFromFile();   // might have inconsistent indentation\r\nString clean  = config.stripIndent();",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "69c610c5-ee5d-4176-9ae3-489cce328f3d",
+      "cell_type": "code",
+      "source": "// Interprets Java escape sequences in a string\r\n// Processes: \\t \\b \\n \\r \\f \\' \\\" \\\\ \\0-\\377 (octal) \\uXXXX\r\n// Useful when escape sequences are stored as literal text (e.g. from DB, config)\r\n\r\n// The string \"\\n\" (two chars: backslash + n) becomes newline (one char):\r\nString raw = \"Hello\\\\nWorld\";   // 12 chars: Hello\\nWorld (literal \\n)\r\nraw.length();                    // 12\r\n\r\nString escaped = raw.translateEscapes();\r\nescaped.length();                // 11 (the \\n became an actual newline)\r\n// \"Hello\r\n// World\"\r\n\r\n// All supported escape sequences:\r\n\"\\\\t\".translateEscapes();    // \"\\t\"  tab\r\n\"\\\\n\".translateEscapes();    // \"\\n\"  newline\r\n\"\\\\r\".translateEscapes();    // \"\\r\"  carriage return\r\n\"\\\\b\".translateEscapes();    // \"\\b\"  backspace\r\n\"\\\\f\".translateEscapes();    // \"\\f\"  form feed\r\n\"\\\\'\".translateEscapes();    // \"'\"   single quote\r\n\"\\\\\\\"\".translateEscapes();   // \"\\\"\"  double quote\r\n\"\\\\\\\\\".translateEscapes();   // \"\\\\\"  single backslash\r\n\"\\\\141\".translateEscapes();  // \"a\"   octal 141 = 97 = 'a'\r\n\r\n// Invalid escape → IllegalArgumentException\r\n// \"\\\\q\".translateEscapes() → throws — \\q is not a valid escape\r\n\r\n// Real use case: JSON/config files that store escape sequences as text\r\nString fromDb = fetchRawTemplate();  // \"Dear %s,\\\\n\\\\nThank you.\"\r\nString actual = fromDb.translateEscapes()\r\n                       .formatted(\"Alice\");",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "ba1b1156-e3f4-495b-95ac-a077ebd41968",
+      "cell_type": "markdown",
+      "source": "## Files",
+      "metadata": {
+        "language": "markdown",
+        "id": "ba1b1156-e3f4-495b-95ac-a077ebd41968"
+      }
+    },
+    {
+      "id": "6879c9e9-c036-4566-a873-18e81e1d4c2a",
+      "cell_type": "code",
+      "source": "// Before Java 13 — had to build URI for ZIP file systems\r\nURI uri = URI.create(\"jar:file:/path/to/archive.zip\");\r\ntry (FileSystem fs = FileSystems.newFileSystem(uri, Map.of())) {\r\n    Path inside = fs.getPath(\"readme.txt\");\r\n    Files.readString(inside);\r\n}\r\n\r\n// Java 13 — new overload 1: Path-based (no URI needed)\r\nPath zipPath = Path.of(\"/path/to/archive.zip\");\r\ntry (FileSystem fs = FileSystems.newFileSystem(zipPath)) {\r\n    Path entry = fs.getPath(\"readme.txt\");\r\n    String content = Files.readString(entry);\r\n    System.out.println(content);\r\n}\r\n\r\n// Java 13 — new overload 2: Path + ClassLoader\r\nClassLoader cl = MyApp.class.getClassLoader();\r\ntry (FileSystem fs = FileSystems.newFileSystem(zipPath, cl)) {\r\n    // custom class loader provides the FileSystemProvider\r\n}\r\n\r\n// Signature of new overloads:\r\n// static FileSystem newFileSystem(Path path) throws IOException\r\n// static FileSystem newFileSystem(Path path, ClassLoader loader) throws IOException",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "5ed310fb-2fb1-4de4-8868-950860dc2e45",
+      "cell_type": "code",
+      "source": "// Read files inside a ZIP archive\r\nPath zipFile = Path.of(\"reports.zip\");\r\ntry (FileSystem zip = FileSystems.newFileSystem(zipFile)) {\r\n\r\n    // List all entries\r\n    Files.walk(zip.getPath(\"/\"))\r\n         .filter(Files::isRegularFile)\r\n         .forEach(System.out::println);\r\n\r\n    // Read a specific file\r\n    Path report = zip.getPath(\"monthly/april.csv\");\r\n    List<String> lines = Files.readAllLines(report);\r\n\r\n    // Copy a file out of the ZIP\r\n    Files.copy(zip.getPath(\"data.json\"),\r\n               Path.of(\"extracted_data.json\"),\r\n               StandardCopyOption.REPLACE_EXISTING);\r\n}\r\n\r\n// Write into a ZIP (create or update)\r\nMap<String, String> env = Map.of(\"create\", \"true\");\r\nURI uri = URI.create(\"jar:\" + Path.of(\"new.zip\").toUri());\r\ntry (FileSystem zip = FileSystems.newFileSystem(uri, env)) {\r\n    Files.writeString(zip.getPath(\"hello.txt\"), \"Hello inside ZIP!\");\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0ff5c8f7-ccd2-4c5a-a2bf-dcbf388f9c1f",
+      "cell_type": "markdown",
+      "source": "## Socket Reimplementation",
+      "metadata": {
+        "language": "markdown",
+        "id": "0ff5c8f7-ccd2-4c5a-a2bf-dcbf388f9c1f"
+      }
+    },
+    {
+      "id": "2462210a-a0d7-46e2-a2b1-8b8435ea35a8",
+      "cell_type": "code",
+      "source": "// OLD implementation: PlainSocketImpl (since JDK 1.0 — 1996!)\r\n// Problems with PlainSocketImpl:\r\n// ✗ Used native threads (C-level) for socket operations\r\n// ✗ Thread.stop() and thread interruption didn't work reliably\r\n// ✗ Not compatible with Project Loom virtual threads (future Java)\r\n// ✗ Hard to maintain, dated architecture\r\n\r\n// NEW implementation: NioSocketImpl\r\n// ✓ Uses java.util.concurrent locks (not native)\r\n// ✓ Uses java.nio FileDescriptor (same as NIO channels)\r\n// ✓ Thread interruption works correctly (interrupting a blocked thread\r\n//     closes the socket and wakes the thread)\r\n// ✓ Compatible with Project Loom virtual threads (Java 21)\r\n// ✓ Supports SO_TIMEOUT via timed park — no dedicated thread needed\r\n\r\n// YOUR CODE CHANGES: ZERO — fully transparent\r\nSocket s = new Socket(\"example.com\", 80);  // now uses NioSocketImpl\r\nServerSocket ss = new ServerSocket(8080);  // now uses NioSocketImpl\r\n// All existing code works exactly the same\r\n\r\n# Temporarily revert to old implementation (for testing):\r\njava -Djdk.net.usePlainSocketImpl=true MyApp\r\n\r\n// Why it matters for the future:\r\n// Project Loom (Java 21) — Virtual Threads\r\n// Virtual threads need the socket implementation to be\r\n// compatible with thread parking/unparking\r\n// The OLD PlainSocketImpl was NOT compatible\r\n// The NEW NioSocketImpl IS compatible → enables virtual threads on sockets\r\n",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "fa749f36-948c-411a-9269-949b3d27fbdc",
+      "cell_type": "code",
+      "source": "// BEFORE Java 13: interrupting a thread blocked on Socket.read()\r\n// did NOT reliably wake the thread or close the socket\r\n\r\n// AFTER Java 13: interrupting a thread blocked on I/O WORKS correctly\r\n\r\nThread reader = new Thread(() -> {\r\n    try (var s = new Socket(\"example.com\", 80)) {\r\n        byte[] buf = new byte[1024];\r\n        s.getInputStream().read(buf); // blocking read\r\n    } catch (SocketException e) {\r\n        System.out.println(\"Socket closed due to interrupt\"); // NOW works reliably\r\n    } catch (IOException e) {\r\n        e.printStackTrace();\r\n    }\r\n});\r\nreader.start();\r\n\r\nThread.sleep(1000);\r\nreader.interrupt(); // Java 13: reliably wakes blocked I/O thread",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}

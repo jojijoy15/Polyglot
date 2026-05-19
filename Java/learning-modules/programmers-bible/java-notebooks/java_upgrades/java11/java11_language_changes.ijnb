@@ -1,0 +1,328 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "3ded4aef-04b5-4f46-8e8c-33aea44e4ed4",
+      "cell_type": "markdown",
+      "source": "## Java 11 Changes\n\n### Language\n\n1. API changes\n    - String new methods\n    - Optional\n    - HTTP Client\n    - NIO Files\n    - Collection-Array Bridge methods\n    - `Predicate.not`\n    - IO & Path\n    - Some other Util API changes\n\n### Platform\n\n1. Run a single .java file directly with java.\n    - No explicit javac compilation step. \n    - The JVM compiles and runs it in memory. Ideal for scripts, prototypes, and education.\n\n2. Java Flight Recorder (JFR)\n\n    - JFR was a commercial Oracle JDK feature. \n    - Java 11 opens it to all. A low-overhead profiling and event-streaming tool built into the JVM. Now part of OpenJDK at no cost.\n\n```sh\n# Start JFR recording at launch\njava -XX:StartFlightRecording=filename=myrecording.jfr,\\\n         duration=60s,\\\n         settings=profile \\\n     com.example.App\n\n# Or start after JVM is running (jcmd)\njcmd <pid> JFR.start name=recording filename=app.jfr duration=120s\njcmd <pid> JFR.dump filename=snapshot.jfr\njcmd <pid> JFR.stop name=recording\n\n# Settings profiles:\n# default  — low overhead (<1%), suitable for production always-on\n# profile  — higher detail, suitable for short profiling sessions\n\n# Analyse with JMC (Java Mission Control)\njmc app.jfr\n```\n3. NEST based Access\n\n    - Fixes a long-standing inconsistency: nested classes (inner, static, anonymous) should have access to each other's private members without the compiler generating synthetic bridge methods.\n    - Java 11 formalises nestmates at the JVM level.\n\n4. Dynamic Class - File Constants\n\n    - A new JVM constant pool form CONSTANT_Dynamic that allows constants to be computed lazily at runtime via a bootstrap method.\n    - Enables language designers and bytecode engineers to create richer constant types cheaply.\n5. Improved Unicode support\n\n    Java 11 fully supports Unicode 10.0\n    +8,518 characters, +56 new emoji, new scripts\n\n    New emoji in Unicode 10 — now representable\n    String pretzel    = \"\\uD83E\\uDD68\"; // 🥨\n    String broccoli   = \"\\uD83E\\uDD66\"; // 🥦\n    String dinosaur   = \"\\uD83E\\uDD95\"; // 🦕\n\n    // Character.isAlphabetic() / isDigit() updated for new codepoints\n    Character.isAlphabetic(0x1F1E6); // false — flag emoji letter\n\n    // New scripts: Masaram Gondi, Nüshu, Soyombo, etc.\n\n    // Charset improvements:\n    // New StandardCharsets constants:\n    StandardCharsets.UTF_8.name();     // \"UTF-8\"\n    StandardCharsets.US_ASCII.name();  // \"US-ASCII\"\n    // Java 11 makes more methods accept Charset directly (vs String name)\n\n    // Locale improvements:\n    // CLDR data updated — more accurate locale formatting\n    NumberFormat fmt = NumberFormat.getInstance(Locale.GERMANY);\n    fmt.format(1234567.89); // \"1.234.567,89\"\n\n    DateTimeFormatter dtf = DateTimeFormatter\n        .ofLocalizedDate(FormatStyle.FULL)\n        .withLocale(Locale.FRANCE);\n    LocalDate.now().format(dtf); // e.g. \"lundi 15 avril 2024\"\n\n\n## Experimental\n\n1. New GC _(Zero GC)_\n    - A new, experimental, scalable low-latency garbage collector. \n    - Designed to handle multi-terabyte heaps with GC pause times under 10ms regardless of heap size.\n    - Available on Linux/x86-64 only in Java 11 (Windows/macOS later).\n```sh\n        # Enable ZGC\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseZGC \\\n     -Xmx16g \\\n     com.example.App\n\n# ZGC key tuning flags\njava -XX:+UseZGC \\\n     -XX:+UnlockExperimentalVMOptions \\\n     -XX:SoftMaxHeapSize=4g \\          # soft heap size limit\n     -XX:ZCollectionInterval=5 \\       # collect every 5 seconds (0=adaptive)\n     -XX:ZFragmentationLimit=25 \\      # max heap fragmentation %\n     -Xlog:gc*:file=zgc.log \\          # GC log\n     com.example.App\n\n# ZGC properties:\n# ✓ Concurrent — most GC work runs alongside application threads\n# ✓ Pause times <10ms regardless of heap size (even 1TB)\n# ✓ No generational (Java 11) — becomes generational in Java 21\n# ✓ Uses coloured pointers + load barriers (64-bit only)\n# ✓ Supports 8MB to 16TB heap\n# ✗ Slightly lower throughput than G1 (~15%) — tradeoff for low latency\n\n# Compare GC options in Java 11:\n# G1   — default, balanced (good for most apps)\n# ZGC  — experimental, ultra-low latency (large heaps, real-time)\n# Epsilon — experimental, no-op GC (see Epsilon tab)\n```\n\n2. Epsilon GC \n\n- A GC that allocates memory but never collects it. \n- When the heap is exhausted, the JVM exits. \n- Useful for performance testing, short-lived processes, and latency-sensitive benchmarks.\n\n```sh\n# Enable Epsilon GC\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseEpsilonGC \\\n     com.example.App\n\n# With a fixed small heap (will OOM and exit after allocation exhausted)\njava -XX:+UnlockExperimentalVMOptions \\\n     -XX:+UseEpsilonGC \\\n     -Xmx256m \\\n     com.example.ShortLivedApp\n\n// Epsilon GC properties:\n// ✓ Zero GC pause overhead — ideal for benchmarking\n// ✓ Zero GC CPU overhead — all CPU for your app\n// ✓ Heap fragmentation stats available\n// ✗ No garbage collection — OOM if heap fills\n// ✗ Not for long-running production apps\n\n// Primary use cases:\n// 1. Performance testing without GC interference\n//    → Isolate allocation cost from GC cost\n// 2. Memory pressure testing\n//    → Verify your app fits in a given heap\n// 3. Very short-lived apps / CLI tools\n//    → Process that runs for <1s, exits before GC needed\n// 4. Latency benchmarks\n//    → Eliminate GC pauses from latency measurements\n\n// Example: verify no GC happens during a benchmark\n// If Epsilon runs out of heap → benchmark is not GC-neutral\n// → investigate memory allocations\n\n```\n\n## Removed\n\n- Java 11 removed several APIs that were deprecated in Java 9, and deprecated more for future removal. \n- This is the largest removal since Java 8.\n\n1. Module Removals\n\n```sh\nThese modules were deprecated in Java 9 and REMOVED in Java 11:\n\n✗ java.xml.bind    — JAXB (XML binding)\n✗ java.xml.ws      — JAX-WS (SOAP web services)\n✗ java.xml.ws.annotation — javax.annotation\n✗ java.corba       — CORBA\n✗ java.transaction — JTA\n✗ java.activation  — JavaBeans Activation Framework\n✗ java.se.ee       — aggregator module\n\nMigration — add as Maven dependencies:\nJAXB (XML binding):\n<dependency>\n  <groupId>jakarta.xml.bind</groupId>\n  <artifactId>jakarta.xml.bind-api</artifactId>\n  <version>3.0.1</version>\n</dependency>\n<dependency>\n  <groupId>com.sun.xml.bind</groupId>\n  <artifactId>jaxb-impl</artifactId>\n</dependency>\njavax.annotation (now jakarta.annotation):\n<dependency>\n  <groupId>jakarta.annotation</groupId>\n  <artifactId>jakarta.annotation-api</artifactId>\n</dependency>\n    Common compile error after Java 11 migration:\n    \"package javax.xml.bind does not exist\"\n    → Add jakarta.xml.bind-api dependency\n```\n\n2. Applet and related tools\n\n✗ Java Web Start — removed (JEP 289, deprecated Java 9)\n✗ Applet API    — deprecated for removal (final removal Java 17)\n✗ javaws tool   — removed with Web Start\n✗ Pack200 compression tools — deprecated (removed Java 14)\n\n3. Thread API removal\n    - Thread methods formally removed:\n        ✗ Thread.destroy()    — removed\n        ✗ Thread.stop(Throwable) — removed\n\n    ```java\n        // Use Thread.interrupt() pattern instead:\n        class SafeThread extends Thread {\n            public void run() {\n                while (!isInterrupted()) {\n                    doWork();\n                }\n                cleanup();\n            }\n        }\n        SafeThread t = new SafeThread();\n        t.start();\n        t.interrupt(); // safe cooperative stop\n    ```\n\n## Deprecated\n\n1. Nashorn Engine removal\n\n    // Nashorn JavaScript engine — deprecated in Java 11\n    // (Removed in Java 15)\n    @Deprecated(since = \"11\", forRemoval = true)\n    // ScriptEngine engine = new ScriptEngineManager().getEngineByName(\"nashorn\");\n    // Replace with GraalVM JS or other scripting engine\n\n    // Security Manager deprecated eventually\n    // (Formally deprecated in Java 17, removed in Java 24)\n\n    // Finalize methods on streams — deprecated\n    // FileInputStream.finalize() → use try-with-resources\n    // FileOutputStream.finalize() → use try-with-resources\n    // ZipFile.finalize() → use try-with-resources\n    // Use this pattern:\n    try (var fis = new FileInputStream(\"file.txt\")) {\n        // reads...\n    } // closed automatically — no finalize needed",
+      "metadata": {
+        "language": "markdown",
+        "id": "3ded4aef-04b5-4f46-8e8c-33aea44e4ed4"
+      }
+    },
+    {
+      "id": "ddd62f58-be1f-44fd-af18-6c83c0c4584a",
+      "cell_type": "markdown",
+      "source": "### String Methods\r\n\r\n- String Indification (JEP - 280)",
+      "metadata": {
+        "language": "markdown",
+        "id": "ddd62f58-be1f-44fd-af18-6c83c0c4584a"
+      }
+    },
+    {
+      "id": "e33b03f2-161d-4ee2-8d8c-2dad0cfce5f1",
+      "cell_type": "code",
+      "source": "// Returns true if string is empty or contains only whitespace\r\n// Unlike isEmpty(), it considers whitespace-only strings as blank\r\n\"\".isBlank();          // true\r\n\"   \".isBlank();       // true  — whitespace only\r\n\"\\t\\n\".isBlank();       // true  — tabs and newlines\r\n\"hello\".isBlank();     // false\r\n\"  hi  \".isBlank();   // false — has non-whitespace\r\n\r\n// Compare with older methods:\r\n\"   \".isEmpty();       // false — not empty (has chars)\r\n\"   \".trim().isEmpty();// true  — old Java 8 idiom (now replaced by isBlank)\r\n\"   \".isBlank();       // true  — Java 11 — clean single method\r\n\r\n// Practical: validate user input\r\npublic boolean isValidInput(String input) {\r\n    return input != null && !input.isBlank();\r\n}\r\n\r\n// Works with Unicode whitespace too (unlike trim())\r\n// \\u2000-\\u200B (various Unicode spaces) — treated as whitespace by isBlank",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "38d41726-d9d8-4c06-b9b9-18f22b68d800",
+      "cell_type": "code",
+      "source": "// Unicode-aware whitespace stripping (better than trim())\r\n// trim() only removes chars ≤ U+0020 (ASCII)\r\n// strip() uses Character.isWhitespace() — removes Unicode whitespace too\r\n\r\nString s = \"  Hello World  \";\r\n\r\ns.strip();          // \"Hello World\"   — removes both ends\r\ns.stripLeading();   // \"Hello World  \" — removes only leading\r\ns.stripTrailing();  // \"  Hello World\" — removes only trailing\r\n\r\n// Comparison with trim():\r\nString unicode = \"\\u2000Hello\\u2000\"; // U+2000 is Unicode EN QUAD (space)\r\nunicode.trim();          // \"\\u2000Hello\\u2000\" — NOT removed (ASCII only)\r\nunicode.strip();         // \"Hello\" — removed (Unicode-aware)\r\n\r\n// Practical: clean up form input\r\nString username = getUserInput().strip();\r\nString firstName = rawName.stripLeading();\r\n\r\n// Use strip() over trim() for all new code",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "a010a727-d1b2-4747-90fc-6641d8884da3",
+      "cell_type": "code",
+      "source": "// Returns a Stream<String> of lines from the string\r\n// Split on \\n, \\r, or \\r\\n\r\n// Lazy — efficient for large strings\r\n\r\nString text = \"line1\\nline2\\nline3\";\r\ntext.lines()\r\n    .forEach(System.out::println);\r\n// line1\r\n// line2\r\n// line3\r\n\r\n// Count lines\r\nlong count = text.lines().count(); // 3\r\n\r\n// Process each line\r\nList<String> nonBlankLines = text.lines()\r\n    .filter(l -> !l.isBlank())\r\n    .collect(Collectors.toList());\r\n\r\n// With Windows-style line endings\r\n\"a\\r\\nb\\r\\nc\".lines().count(); // 3\r\n\r\n// Read a file as lines via String (if file is small)\r\nString content = Files.readString(Path.of(\"data.csv\"));\r\ncontent.lines()\r\n       .skip(1)               // skip header\r\n       .map(l -> l.split(\",\"))\r\n       .forEach(cols -> process(cols));",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "b6a34f10-ef19-4195-9366-6e24a1fbb320",
+      "cell_type": "code",
+      "source": "// Repeats the string n times. Returns \"\" if count is 0.\r\n\"ab\".repeat(3);   // \"ababab\"\r\n\"ha\".repeat(3);   // \"hahaha\"\r\n\"-\".repeat(20);   // \"--------------------\"\r\n\"*\".repeat(0);    // \"\"\r\n// \"x\".repeat(-1) → throws IllegalArgumentException\r\n\r\n// Practical: build separators, padding, test data\r\nString separator = \"=\".repeat(50);\r\nSystem.out.println(separator);\r\n\r\n// Indent builder\r\nString indent = \" \".repeat(4);\r\nString indented = indent + \"code here\";\r\n\r\n// Generate test strings\r\nString bigString = \"abc\".repeat(1000); // 3000 chars\r\n\r\n// Fill templates\r\nSystem.out.println(\"╔\" + \"═\".repeat(48) + \"╗\");\r\nSystem.out.println(\"║\" + \" \".repeat(48) + \"║\");\r\nSystem.out.println(\"╚\" + \"═\".repeat(48) + \"╝\");",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "3607ffe1-afa3-4941-941c-fcb83a69f318",
+      "cell_type": "markdown",
+      "source": "### Optional",
+      "metadata": {
+        "language": "markdown",
+        "id": "3607ffe1-afa3-4941-941c-fcb83a69f318"
+      }
+    },
+    {
+      "id": "96a81b38-a23b-45d5-8685-fdfcb1f3ac8a",
+      "cell_type": "code",
+      "source": "// Complement of isPresent() — returns true if Optional is empty\r\n// Previously: !opt.isPresent() — double negation, hard to read\r\n\r\nOptional<String> present = Optional.of(\"hello\");\r\nOptional<String> empty   = Optional.empty();\r\n\r\n// Java 8 way — awkward double negation:\r\nif (!present.isPresent()) { /* ... */ }\r\n\r\n// Java 11 — clean:\r\npresent.isEmpty();  // false\r\nempty.isEmpty();    // true\r\n\r\n// Practical: early return / guard clause\r\nOptional<User> user = findUser(id);\r\nif (user.isEmpty()) {\r\n    throw new UserNotFoundException(\"User \" + id + \" not found\");\r\n}\r\nprocess(user.get());\r\n\r\n// Works on OptionalInt, OptionalLong, OptionalDouble too\r\nOptionalInt.empty().isEmpty();   // true\r\nOptionalInt.of(5).isEmpty();    // false\r\n\r\n// Pair with isPresent() for clarity in conditions\r\nStream<Optional<String>> opts = Stream.of(\r\n    Optional.of(\"a\"), Optional.empty(), Optional.of(\"b\"));\r\nopts.filter(Optional::isPresent).map(Optional::get); // [\"a\",\"b\"]\r\n// or using Java 9's flatMap(Optional::stream)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "a47b385c-d66e-4d8e-b250-97f77fc420e1",
+      "cell_type": "code",
+      "source": "// Java 11 Stream changes: no new terminal ops in Java 11\r\n// Stream.toList() arrives in Java 16\r\n// But Java 11's Predicate.not() pairs heavily with streams\r\n\r\n// What IS new in Java 11 for streams — Predicate.not():\r\nList<String> data = List.of(\"hello\", \"\", \"world\", \"  \", \"java\");\r\n\r\n// Java 8 way — verbose lambda:\r\ndata.stream().filter(s -> !s.isBlank()).collect(Collectors.toList());\r\n\r\n// Java 11 way — Predicate.not():\r\ndata.stream()\r\n    .filter(Predicate.not(String::isBlank))\r\n    .collect(Collectors.toList());\r\n// [\"hello\", \"world\", \"java\"]\r\n\r\n// The isBlank() method reference works because isBlank is new in Java 11",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "d1c3af79-bc34-4866-9461-510fc2da6f60",
+      "cell_type": "markdown",
+      "source": "## Http Client",
+      "metadata": {
+        "language": "markdown",
+        "id": "d1c3af79-bc34-4866-9461-510fc2da6f60"
+      }
+    },
+    {
+      "id": "901610a0-78be-490b-a3b3-a3f41b9cce63",
+      "cell_type": "code",
+      "source": "import java.net.http.*;\r\nimport java.net.http.HttpResponse.BodyHandlers;\r\n\r\n// Simple client — defaults (HTTP/2, follow redirects: NEVER)\r\nHttpClient client = HttpClient.newHttpClient();\r\n\r\n// Configured client\r\nHttpClient client = HttpClient.newBuilder()\r\n    .version(HttpClient.Version.HTTP_2)              // HTTP/2 preferred\r\n    .followRedirects(HttpClient.Redirect.NORMAL)     // follow non-HTTPS→HTTP\r\n    .connectTimeout(Duration.ofSeconds(10))\r\n    .authenticator(Authenticator.getDefault())\r\n    .executor(Executors.newFixedThreadPool(4))\r\n    .proxy(ProxySelector.of(new InetSocketAddress(\"proxy.host\", 8080)))\r\n    .build();\r\n\r\n// HttpClient is AutoCloseable in Java 21+\r\n// In Java 11 — reuse across requests (thread-safe)",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "8a5f4d34-24a2-4aca-8f69-3c6f611d89ed",
+      "cell_type": "code",
+      "source": "HttpClient client = HttpClient.newHttpClient();\r\n\r\n// Build a request\r\nHttpRequest request = HttpRequest.newBuilder()\r\n    .uri(URI.create(\"https://api.github.com/users/octocat\"))\r\n    .GET()                                    // default, can omit\r\n    .header(\"Accept\", \"application/json\")\r\n    .header(\"User-Agent\", \"Java11Client\")\r\n    .timeout(Duration.ofSeconds(15))\r\n    .build();\r\n\r\n// ── Synchronous ──\r\nHttpResponse<String> response =\r\n    client.send(request, BodyHandlers.ofString());\r\n\r\nresponse.statusCode();                        // 200\r\nresponse.body();                              // JSON string\r\nresponse.headers().firstValue(\"content-type\"); // Optional[...]\r\nresponse.version();                           // HTTP_2\r\nresponse.uri();                               // the final URI (after redirects)\r\n\r\n// ── Asynchronous ──\r\nCompletableFuture<HttpResponse<String>> future =\r\n    client.sendAsync(request, BodyHandlers.ofString());\r\n\r\nfuture\r\n    .thenApply(HttpResponse::body)\r\n    .thenAccept(System.out::println)\r\n    .join();\r\n\r\n// Async parallel requests\r\nList<URI> uris = List.of(\r\n    URI.create(\"https://api.example.com/a\"),\r\n    URI.create(\"https://api.example.com/b\"),\r\n    URI.create(\"https://api.example.com/c\")\r\n);\r\nList<CompletableFuture<String>> futures = uris.stream()\r\n    .map(uri -> HttpRequest.newBuilder(uri).build())\r\n    .map(req -> client.sendAsync(req, BodyHandlers.ofString())\r\n                      .thenApply(HttpResponse::body))\r\n    .collect(Collectors.toList());\r\n\r\nCompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();\r\nfutures.stream().map(CompletableFuture::join).forEach(System.out::println);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "cdd166c4-18f8-462b-8c7b-e21e59ffadeb",
+      "cell_type": "code",
+      "source": "// POST with JSON body\r\nString json = \"{\\\"name\\\":\\\"Alice\\\",\\\"age\\\":30}\";\r\nHttpRequest postRequest = HttpRequest.newBuilder()\r\n    .uri(URI.create(\"https://api.example.com/users\"))\r\n    .POST(HttpRequest.BodyPublishers.ofString(json))\r\n    .header(\"Content-Type\", \"application/json\")\r\n    .build();\r\n\r\n// All BodyPublishers:\r\nHttpRequest.BodyPublishers.ofString(\"text\");\r\nHttpRequest.BodyPublishers.ofString(\"text\", StandardCharsets.UTF_8);\r\nHttpRequest.BodyPublishers.ofByteArray(new byte[]{1,2,3});\r\nHttpRequest.BodyPublishers.ofFile(Path.of(\"upload.txt\"));\r\nHttpRequest.BodyPublishers.ofInputStream(() -> getStream());\r\nHttpRequest.BodyPublishers.noBody();           // for DELETE, etc.\r\n\r\n// All BodyHandlers (response body):\r\nBodyHandlers.ofString();                       // String\r\nBodyHandlers.ofString(StandardCharsets.UTF_8); // with charset\r\nBodyHandlers.ofByteArray();                    // byte[]\r\nBodyHandlers.ofFile(Path.of(\"response.json\")); // save to file\r\nBodyHandlers.ofLines();                        // Stream<String>\r\nBodyHandlers.ofInputStream();                  // InputStream\r\nBodyHandlers.discarding();                     // discard body (status only)\r\nBodyHandlers.replacing(\"default\");           // return fixed value",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "a8592f1a-3843-48fd-8456-c947737a3493",
+      "cell_type": "code",
+      "source": "HttpClient client = HttpClient.newHttpClient();\r\n\r\nWebSocket ws = client.newWebSocketBuilder()\r\n    .header(\"Authorization\", \"Bearer token\")\r\n    .buildAsync(URI.create(\"wss://echo.websocket.org\"),\r\n        new WebSocket.Listener() {\r\n\r\n            public void onOpen(WebSocket ws) {\r\n                System.out.println(\"Connected\");\r\n                ws.request(1); // request first message\r\n            }\r\n\r\n            public CompletionStage<?> onText(WebSocket ws,\r\n                    CharSequence data, boolean last) {\r\n                System.out.println(\"Received: \" + data);\r\n                ws.request(1); // request next message\r\n                return null;\r\n            }\r\n\r\n            public CompletionStage<?> onClose(WebSocket ws,\r\n                    int status, String reason) {\r\n                System.out.println(\"Closed: \" + reason);\r\n                return null;\r\n            }\r\n\r\n            public void onError(WebSocket ws, Throwable ex) {\r\n                ex.printStackTrace();\r\n            }\r\n        }).join();\r\n\r\nws.sendText(\"Hello WebSocket!\", true).join();\r\nws.sendClose(WebSocket.NORMAL_CLOSURE, \"bye\").join();",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "3807a9cc-6446-4566-878a-f70ad8142ad3",
+      "cell_type": "markdown",
+      "source": "## Var in lambda",
+      "metadata": {
+        "language": "markdown",
+        "id": "3807a9cc-6446-4566-878a-f70ad8142ad3"
+      }
+    },
+    {
+      "id": "44f18d7d-c3df-49ac-af33-06943110037e",
+      "cell_type": "code",
+      "source": "// Java 10: var not allowed in lambdas\r\n// Java 11: var is now valid in lambda parameters\r\n\r\n// Equivalent forms — all identical after compilation:\r\nFunction<String, String> f1 = (String s) -> s.toUpperCase(); // explicit type\r\nFunction<String, String> f2 = s -> s.toUpperCase();         // inferred (Java 8)\r\nFunction<String, String> f3 = (var s) -> s.toUpperCase();  // var (Java 11)\r\n\r\n// BiFunction\r\nBiFunction<String, Integer, String> bi =\r\n    (var s, var n) -> s.repeat(n);\r\n\r\n// ─── THE KEY REASON: apply annotations to lambda params ───\r\n// Cannot annotate a lambda param without a type:\r\n// (@NotNull s) -> s.toUpperCase()    ← COMPILE ERROR\r\n// (@NotNull String s) -> ...         ← OK but verbose\r\n// (@NotNull var s) -> ...            ← JAVA 11 — clean & annotatable\r\n\r\nFunction<String, String> f4 =\r\n    (@NotNull var s) -> s.toUpperCase();\r\n\r\nBiFunction<String, Integer, String> f5 =\r\n    (@NotNull var s, @Positive var n) -> s.repeat(n);\r\n\r\n// Rule: ALL parameters must use var if any do (mixing not allowed)\r\n// (var s, Integer n) → COMPILE ERROR — inconsistent\r\n// (var s, var n)     → OK\r\n\r\n// Use in stream pipelines with annotations\r\nList.of(\"hello\", \"world\").stream()\r\n    .map((@NonNull var s) -> s.toUpperCase())\r\n    .forEach(System.out::println);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "15727d3a-3035-4d69-bc74-b886f5dc5cfa",
+      "cell_type": "markdown",
+      "source": "## Files API",
+      "metadata": {
+        "language": "markdown",
+        "id": "15727d3a-3035-4d69-bc74-b886f5dc5cfa"
+      }
+    },
+    {
+      "id": "f1f1f71e-55b6-448a-9555-c448415243cf",
+      "cell_type": "code",
+      "source": "// Read entire file to String — one line!\r\n// Default charset: UTF-8\r\nString content = Files.readString(Path.of(\"data.txt\"));\r\n\r\n// With explicit charset\r\nString content2 = Files.readString(Path.of(\"data.txt\"), StandardCharsets.ISO_8859_1);\r\n\r\n// Write String to file — one line!\r\nFiles.writeString(Path.of(\"output.txt\"), \"Hello, World!\\n\");\r\n\r\n// With options and charset\r\nFiles.writeString(\r\n    Path.of(\"log.txt\"),\r\n    \"New entry\\n\",\r\n    StandardCharsets.UTF_8,\r\n    StandardOpenOption.APPEND,\r\n    StandardOpenOption.CREATE\r\n);\r\n\r\n// Compare with old way (Java 8):\r\n// Read:\r\nString old = new String(Files.readAllBytes(Path.of(\"data.txt\")), StandardCharsets.UTF_8);\r\n// Write:\r\nFiles.write(Path.of(\"out.txt\"), \"text\".getBytes(StandardCharsets.UTF_8));\r\n\r\n// Java 11 — dramatically cleaner:\r\nString text = Files.readString(Path.of(\"data.txt\"));\r\nFiles.writeString(Path.of(\"out.txt\"), text);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "c117966b-35b5-497a-8962-d4a65b2cd0e7",
+      "cell_type": "code",
+      "source": "// Path.of() — new static factory in Java 11\r\n// Equivalent to Paths.get() but on Path itself\r\n\r\n// Old way:\r\nPath p1 = Paths.get(\"/tmp/data.txt\");\r\nPath p2 = Paths.get(\"/tmp\", \"sub\", \"data.txt\");\r\n\r\n// Java 11 way:\r\nPath p3 = Path.of(\"/tmp/data.txt\");\r\nPath p4 = Path.of(\"/tmp\", \"sub\", \"data.txt\");\r\nPath p5 = Path.of(URI.create(\"file:///tmp/data.txt\"));\r\n\r\n// Works perfectly with readString/writeString\r\nString json = Files.readString(Path.of(\"config.json\"));\r\nFiles.writeString(Path.of(\"result.json\"), processedJson);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "df222cc4-de39-4510-ac9f-5861d368d653",
+      "cell_type": "markdown",
+      "source": "## Collection - Array Bridge Methods",
+      "metadata": {
+        "language": "markdown",
+        "id": "df222cc4-de39-4510-ac9f-5861d368d653"
+      }
+    },
+    {
+      "id": "157ad41d-7d4a-413d-81af-959a97aef44a",
+      "cell_type": "code",
+      "source": "// New default method on Collection interface\r\n// Takes an IntFunction that creates array of correct type and size\r\n\r\nList<String> list = List.of(\"a\", \"b\", \"c\");\r\n\r\n// Old Java 8 ways (both have issues):\r\nString[] arr1 = list.toArray(new String[0]);        // pre-allocate 0-size\r\nString[] arr2 = list.toArray(new String[list.size()]); // pre-size (slight overhead)\r\nObject[] arr3 = list.toArray();                        // Object[] — not String[]\r\n\r\n// Java 11 — clean, using constructor reference:\r\nString[] arr4 = list.toArray(String::new);           // String[3] — elegant!\r\n\r\n// Works with any array type\r\nInteger[]  nums   = List.of(1,2,3).toArray(Integer::new);\r\nLocalDate[] dates = dateList.toArray(LocalDate::new);\r\n\r\n// The IntFunction receives the required size, allocates, and returns array\r\nString[] arr5 = list.toArray(n -> new String[n]); // explicit lambda form\r\n\r\n// Stream already had this — now Collection has it too\r\nlist.stream().toArray(String::new); // already worked in Java 8\r\nlist.toArray(String::new);          // Java 11 — direct on collection",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "50ee60e7-66b9-4e4f-91e0-29983939ef61",
+      "cell_type": "markdown",
+      "source": "## Predicate Not Factory",
+      "metadata": {
+        "language": "markdown",
+        "id": "50ee60e7-66b9-4e4f-91e0-29983939ef61"
+      }
+    },
+    {
+      "id": "735430a5-fc8c-4815-a31e-32fe0fcd0f65",
+      "cell_type": "code",
+      "source": "// New default method on Collection interface\r\n// Takes an IntFunction that creates array of correct type and size\r\n\r\nList<String> list = List.of(\"a\", \"b\", \"c\");\r\n\r\n// Old Java 8 ways (both have issues):\r\nString[] arr1 = list.toArray(new String[0]);        // pre-allocate 0-size\r\nString[] arr2 = list.toArray(new String[list.size()]); // pre-size (slight overhead)\r\nObject[] arr3 = list.toArray();                        // Object[] — not String[]\r\n\r\n// Java 11 — clean, using constructor reference:\r\nString[] arr4 = list.toArray(String::new);           // String[3] — elegant!\r\n\r\n// Works with any array type\r\nInteger[]  nums   = List.of(1,2,3).toArray(Integer::new);\r\nLocalDate[] dates = dateList.toArray(LocalDate::new);\r\n\r\n// The IntFunction receives the required size, allocates, and returns array\r\nString[] arr5 = list.toArray(n -> new String[n]); // explicit lambda form\r\n\r\n// Stream already had this — now Collection has it too\r\nlist.stream().toArray(String::new); // already worked in Java 8\r\nlist.toArray(String::new);          // Java 11 — direct on collections",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "f35366fa-f24d-4132-8542-c7a5fa1c1d3f",
+      "cell_type": "markdown",
+      "source": "## IO & Path",
+      "metadata": {
+        "language": "markdown",
+        "id": "f35366fa-f24d-4132-8542-c7a5fa1c1d3f"
+      }
+    },
+    {
+      "id": "acf46764-371c-4e83-8e82-c6ac7c7c281a",
+      "cell_type": "code",
+      "source": "// InputStream.readNBytes(int len) — read exactly n bytes\r\n// (Added in Java 11 as a simpler overload)\r\ntry (var in = new FileInputStream(\"data.bin\")) {\r\n    byte[] header = in.readNBytes(16); // reads exactly 16 bytes\r\n    byte[] rest   = in.readAllBytes();  // reads remainder\r\n}\r\n\r\n// InputStream.nullInputStream() — discards all reads\r\nInputStream noOp = InputStream.nullInputStream();\r\nnoOp.read(new byte[100]); // returns 0 bytes always — for testing/mocking\r\n\r\n// OutputStream.nullOutputStream() — discards all writes\r\nOutputStream sink = OutputStream.nullOutputStream();\r\nsink.write(\"data\".getBytes()); // silently discarded\r\n\r\n// Reader.nullReader() / Writer.nullWriter()\r\nReader nr = Reader.nullReader();\r\nWriter nw = Writer.nullWriter();\r\n// Useful for suppressing output in tests or dry-run modes",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "cc1e10a1-7456-4f0a-85d4-66d8ec79b958",
+      "cell_type": "markdown",
+      "source": "## Pattern Matching",
+      "metadata": {
+        "language": "markdown",
+        "id": "cc1e10a1-7456-4f0a-85d4-66d8ec79b958"
+      }
+    },
+    {
+      "id": "663f4696-3d72-44a1-8bc1-5c9433f4e36e",
+      "cell_type": "code",
+      "source": "// Pattern.asMatchPredicate() — NEW in Java 11\r\n// Returns a Predicate that tests if the ENTIRE input matches the pattern\r\n// (vs asPredicate() which uses find(), not full match)\r\n\r\nPattern email = Pattern.compile(\"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}\");\r\n\r\n// asPredicate()       — uses find() — true if pattern found ANYWHERE in string\r\n// asMatchPredicate()  — uses matches() — true only if ENTIRE string matches\r\nPredicate<String> isEmail     = email.asMatchPredicate(); // NEW Java 11\r\nPredicate<String> containsEmail = email.asPredicate();     // Java 8\r\n\r\nisEmail.test(\"alice@example.com\");        // true\r\nisEmail.test(\"not-email\");                // false\r\nisEmail.test(\"prefix alice@example.com\"); // false — not full match\r\n\r\n// Use in stream filtering\r\nList.of(\"alice@x.com\", \"bad\", \"bob@y.com\").stream()\r\n    .filter(email.asMatchPredicate())\r\n    .collect(Collectors.toList()); // [alice@x.com, bob@y.com]",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "6eae5af9-5778-4632-8642-3c5ed5b4246f",
+      "cell_type": "markdown",
+      "source": "## Time Unit Convert",
+      "metadata": {
+        "language": "markdown",
+        "id": "6eae5af9-5778-4632-8642-3c5ed5b4246f"
+      }
+    },
+    {
+      "id": "9120c2db-a69f-4d61-8d17-cb647967765d",
+      "cell_type": "code",
+      "source": "// TimeUnit.convert(Duration) — new overload in Java 11\r\n// Convert a Duration to a specific TimeUnit\r\n\r\nDuration d = Duration.ofHours(2).plusMinutes(30);\r\n\r\nlong seconds = TimeUnit.SECONDS.convert(d);   // 9000\r\nlong minutes = TimeUnit.MINUTES.convert(d);   // 150\r\nlong hours   = TimeUnit.HOURS.convert(d);     // 2 (truncated)\r\nlong millis  = TimeUnit.MILLISECONDS.convert(d); // 9000000\r\n\r\n// Cleaner than: d.toSeconds(), d.toMinutes() etc.\r\n// Especially useful when the TimeUnit is a variable\r\nTimeUnit unit = getTargetUnit();\r\nlong value = unit.convert(d); // works for any unit",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0452bb4c-8a4d-47ca-b0c9-edb90fa538ba",
+      "cell_type": "markdown",
+      "source": "## Characters & Unicode ",
+      "metadata": {
+        "language": "markdown",
+        "id": "0452bb4c-8a4d-47ca-b0c9-edb90fa538ba"
+      }
+    },
+    {
+      "id": "b7593cd8-0dce-4b68-9d6b-4712f7c19937",
+      "cell_type": "code",
+      "source": "// New static overload accepting int (Unicode codepoint)\r\n// The existing one took char (16-bit), missing supplementary chars\r\n\r\nString s1 = Character.toString('A');        // \"A\" — existing (Java 4)\r\nString s2 = Character.toString(65);          // \"A\" — new int overload (Java 11)\r\nString s3 = Character.toString(0x1F600);    // \"😀\" — emoji (supplementary char)\r\nString s4 = Character.toString(0x4E2D);     // \"中\" — CJK character\r\n\r\n// Useful for iterating over codepoints in a string\r\n\"Hello 🌍\".codePoints()\r\n    .mapToObj(Character::toString)           // NEW — each codepoint to String\r\n    .forEach(System.out::println);\r\n// H e l l o   🌍 — each on its own lines",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "0269699e-f620-426e-a148-097cf4a24b25",
+      "cell_type": "markdown",
+      "source": "## Nest based access",
+      "metadata": {
+        "language": "markdown",
+        "id": "0269699e-f620-426e-a148-097cf4a24b25"
+      }
+    },
+    {
+      "id": "0f63f830-68f0-4fd4-86e6-bc7f162b4cb6",
+      "cell_type": "code",
+      "source": "public class Outer {\r\n    private int secret = 42;\r\n\r\n    class Inner {\r\n        void reveal() {\r\n            System.out.println(secret); // always compiled fine\r\n        }\r\n    }\r\n\r\n    static class StaticNested {\r\n        void peek(Outer o) {\r\n            System.out.println(o.secret); // Java 11: no bridge method\r\n        }\r\n    }\r\n}\r\n\r\n// Java 10: compiler generated synthetic package-private bridge methods\r\n//           to allow access — creates security/performance issues\r\n// Java 11: JVM understands \"nestmates\" — access is direct, no bridges\r\n\r\n// New reflection API to inspect nests:\r\nClass<?> outerClass = Outer.class;\r\nClass<?> innerClass = Outer.Inner.class;\r\n\r\n// getNestHost() — returns the top-level class of the nest\r\ninnerClass.getNestHost(); // Outer.class\r\nouterClass.getNestHost(); // Outer.class (host is its own nesthost)\r\n\r\n// getNestMembers() — all classes in the nest\r\nClass<?>[] members = outerClass.getNestMembers();\r\n// [Outer.class, Outer$Inner.class, Outer$StaticNested.class]\r\n\r\n// isNestmateOf() — check if two classes are nestmates\r\ninnerClass.isNestmateOf(Outer.StaticNested.class); // true\r\ninnerClass.isNestmateOf(String.class);              // false\r\n\r\n// Impact: frameworks using reflection (Spring, Hibernate, Mockito)\r\n// can now access private nested class members without --add-opens hacks\r\nField f = Outer.class.getDeclaredField(\"secret\");\r\nf.setAccessible(true); // works cleanly for nestmates in Java 11",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
