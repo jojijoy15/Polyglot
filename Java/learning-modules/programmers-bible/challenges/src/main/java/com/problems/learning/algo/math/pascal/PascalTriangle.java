@@ -2,6 +2,9 @@ package com.problems.learning.algo.math.pascal;
 
 import com.problems.learning.tags.Medium;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Medium
 public class PascalTriangle {
 
@@ -37,5 +40,38 @@ public class PascalTriangle {
             row[k] = val;
         }
         return row[c];
+    }
+
+    /**
+     * Print Pascal's Triangle for a given number of rows.
+     * Each row is computed using the previous row:
+     *   row[j] = prevRow[j-1] + prevRow[j]
+     *
+     * Example for numRows = 5:
+     *     [1]
+     *    [1,1]
+     *   [1,2,1]
+     *  [1,3,3,1]
+     * [1,4,6,4,1]
+     */
+    public List<List<Integer>> generateTriangle(int numRows) {
+        List<List<Integer>> triangle = new ArrayList<>();
+
+        for (int i = 0; i < numRows; i++) {
+            List<Integer> row = new ArrayList<>();
+            row.add(1); // first element is always 1
+
+            if (i > 0) {
+                List<Integer> prevRow = triangle.get(i - 1);
+                for (int j = 1; j < i; j++) {
+                    row.add(prevRow.get(j - 1) + prevRow.get(j));
+                }
+                row.add(1); // last element is always 1
+            }
+
+            triangle.add(row);
+        }
+
+        return triangle;
     }
 }

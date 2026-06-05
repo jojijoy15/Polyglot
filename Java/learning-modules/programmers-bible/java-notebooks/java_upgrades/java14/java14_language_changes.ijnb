@@ -1,0 +1,115 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "2adb6164-9741-4da0-80de-045d7da65eb2",
+      "cell_type": "markdown",
+      "source": "# Java 14 Changes\n\n## Language Changes\n\n### Finalized\n\n- Switch Expression\n\n    - Switch becomes an expression that returns a value. Supports arrow labels (no fall-through) and the yield keyword. Graduated from preview (Java 12–13) to permanent.\n\n### Preview\n\n- Pattern Matching\n    \n    - Binds a pattern variable in a single expression, eliminating the explicit cast that follows every instanceof check. \n    - The variable is in scope only where the condition is true.\n\n```sh\n    # Must enable preview features to compile\n    javac --enable-preview --release 14 MyClass.java\n\n    # And at runtime\n    java  --enable-preview MyClass\n```\n\n- Records\n\n    - Concise syntax for immutable data carrier classes.\n    - The compiler auto-generates a canonical constructor, private final fields, accessors, equals(), hashCode(), and toString().\n\n- Text Blocks\n\n    - Multi-line string literals delimited by triple quotes. \n    - Re-indentation and escape processing happen at compile time.\n    - Two new escape sequences added in this second preview.\n    \n## Platform changes\n\n### Standard\n\n- Helpful Null Pointer Exceptions\n\n    - The JVM generates a precise message describing which variable was null.\n    - Enabled by default.\n    - Eliminates the need to add debug prints to locate null in chained expressions.\n\n```sh\n    # Enabled by default in Java 14.\n    # To explicitly control it:\n\n    # Enable (default)\n    java -XX:+ShowCodeDetailsInExceptionMessages MyApp\n\n    # Disable (if you have a concern about verbose output)\n    java -XX:-ShowCodeDetailsInExceptionMessages MyApp\n\n```\n\n- JFR Event Streaming\n\n    - Java Flight Recorder data exposed as a real-time stream via `jdk.jfr.consumer.RecordingStream`.\n    - No need to dump a .jfr file and parse it separately.\n\n```java\n\n    import jdk.jfr.consumer.RecordingStream;\n\n    try (var rs = new RecordingStream()) {\n        rs.enable(\"jdk.CPULoad\").withPeriod(Duration.ofSeconds(1));\n        rs.enable(\"jdk.GarbageCollection\");\n\n        rs.onEvent(\"jdk.CPULoad\", event -> {\n            System.out.printf(\"CPU: %.1f%%%n\",\n                event.getFloat(\"machineTotal\") * 100);\n        });\n\n        rs.onEvent(\"jdk.GarbageCollection\", event -> {\n            System.out.println(\"GC cause: \" + event.getString(\"cause\"));\n        });\n\n        rs.startAsync();   // non-blocking\n        Thread.sleep(30_000);\n    }\n```\n\n\n- [NUMA](https://en.wikipedia.org/wiki/Non-uniform_memory_access)-Aware memory for G1s \n\n    - G1 GC allocates young-generation regions on the NUMA node local to the allocating thread, reducing cross-node memory latency on multi-socket servers.\n\n```sh\n\n    # Enable NUMA-aware allocation for G1\n    java -XX:+UseG1GC \\\n        -XX:+UseNUMA \\\n        -Xms4g -Xmx4g \\\n        MyApp\n\n    # Verify NUMA topology at startup\n    java -XX:+UseG1GC \\\n        -XX:+UseNUMA \\\n        -Xlog:gc+heap+numa=debug \\\n        MyApp\n\n    # Output sample:\n    # [debug][gc,heap,numa] NUMA support enabled, 2 nodes detected\n\n```\n\n- ZGC on macOS and Windows\n\n    - MAC OS\n```sh\n\n    # Use ZGC on macOS (Java 14+)\n    java -XX:+UseZGC \\\n        -Xms512m -Xmx8g \\\n        MyApp\n\n    # Tune soft max heap (ZGC returns memory to OS)\n    java -XX:+UseZGC \\\n        -Xms256m -Xmx8g \\\n        -XX:SoftMaxHeapSize=2g \\\n        MyApp\n\n    # Log ZGC pauses\n    java -XX:+UseZGC \\\n        -Xlog:gc*:gc.log:time,uptime \\\n        MyApp\n\n```\n\n    - Windows OS\n\n```sh\n    # Enable ZGC on Windows (same flags as Linux/macOS)\n    java -XX:+UseZGC -Xmx4g MyApp\n\n    # ZGC on Windows requires:\n    #   Windows 10 / Server 2019 or later\n    #   JDK 14+ 64-bit\n\n    # Confirm ZGC is active in GC log\n    java -XX:+UseZGC \\\n        -Xlog:gc::time \\\n        MyApp\n    # Output: [2024-...] Using ZGC\n```\n\n- Non-Volatile Memory Byte Buffers\n\n    - New FileChannel.MapMode constants (READ_ONLY_SYNC, READ_WRITE_SYNC) create MappedByteBuffer instances over persistent/non-volatile memory (NVM/PMEM), with synchronous flush semantics.\n\n```java\n\n    import java.nio.channels.FileChannel;\n    import java.nio.file.*;\n    import jdk.nio.mapmode.ExtendedMapMode;\n\n    Path pmemFile = Path.of(\"/mnt/pmem/data.bin\");\n\n    try (FileChannel fc = FileChannel.open(\n            pmemFile, StandardOpenOption.READ, StandardOpenOption.WRITE)) {\n\n        // READ_WRITE_SYNC: writes go directly to persistent memory\n        var buf = fc.map(ExtendedMapMode.READ_WRITE_SYNC, 0, 4096);\n\n        buf.putInt(0, 0xDEADBEEF);\n        // No explicit force() needed — data is durable immediately\n    }\n```\n\n### Incubator\n\n- jpackage (Packaging Tool)\n\n    - Bundles a Java application into a self-contained native installer. Produces .exe / .msi on Windows, .dmg / .pkg on macOS, .deb / .rpm on Linux.\n\n```sh\n    # Package a modular application (produces platform-native installer)\njpackage \\\n--name       MyApp \\\n--module-path mods \\\n--module      com.example.myapp/com.example.myapp.Main \\\n--type        dmg          # dmg | pkg | exe | msi | deb | rpm\n\n# Package a non-modular jar\njpackage \\\n--name        MyApp \\\n--input       lib \\\n--main-jar    myapp.jar \\\n--main-class  com.example.Main \\\n--type        exe\n\n# Custom icon and version\njpackage \\\n--name    MyApp \\\n--input   lib \\\n--main-jar myapp.jar \\\n--icon    resources/icon.ico \\\n--app-version 1.0.0\n```\n\n### Removed\n\n- CMS GC Removal\n    - The Concurrent Mark Sweep garbage collector is fully removed. Deprecated in Java 9. Migrate to G1 (default) or ZGC / Shenandoah for low-latency requirements.\n\n```sh\n\n    # Java 13 and earlier (deprecated)\n    java -XX:+UseConcMarkSweepGC MyApp\n    # Warning: ConcMarkSweepGC is deprecated...\n\n    # Java 14 — using CMS is an error\n    java -XX:+UseConcMarkSweepGC MyApp\n    # Error: VM option 'UseConcMarkSweepGC' is obsolete...\n\n    # ✅ Migrate to G1 (default since Java 9)\n    java -XX:+UseG1GC MyApp\n\n    # ✅ Or ZGC for low-latency workloads\n    java -XX:+UseZGC MyApp\n\n    # ✅ Or Shenandoah (available in some distributions)\n    java -XX:+UseShenandoahGC MyApp\n```\n\n- ParallelScavenge & SerialOldGC Combo deprecated \n\n    - The rarely-used combination of Parallel young-gen GC with Serial old-gen GC is deprecated. Almost no production systems use this pairing.\n\n```sh\n\n    # Deprecated combination (triggers warning in Java 14)\n    java -XX:+UseParallelGC -XX:-UseParallelOldGC MyApp\n    # Warning: deprecated combination, consider migrating\n\n    # ✅ Standard Parallel GC (uses ParallelOldGC by default)\n    java -XX:+UseParallelGC MyApp\n\n    # ✅ Or switch to G1\n    java -XX:+UseG1GC MyApp\n```",
+      "metadata": {
+        "language": "markdown",
+        "id": "2adb6164-9741-4da0-80de-045d7da65eb2"
+      }
+    },
+    {
+      "id": "6d7a3f7d-ab1a-43bc-8ca1-26393843b771",
+      "cell_type": "markdown",
+      "source": "### Switch Expresion Finalized",
+      "metadata": {
+        "language": "markdown",
+        "id": "6d7a3f7d-ab1a-43bc-8ca1-26393843b771"
+      }
+    },
+    {
+      "id": "e9159da8-bf6f-46bd-88a6-4ee986c52826",
+      "cell_type": "code",
+      "source": "// Before Java 14 — statement form, error-prone fall-through\r\nint numLetters;\r\nswitch (day) {\r\n    case MONDAY:\r\n    case FRIDAY:\r\n    case SUNDAY:\r\n        numLetters = 6;\r\n        break;\r\n    case TUESDAY:\r\n        numLetters = 7;\r\n        break;\r\n    default:\r\n        throw new IllegalStateException(\"Unknown: \" + day);\r\n}\r\n\r\n// Java 14 — expression form with arrow labels\r\nint numLetters = switch (day) {\r\n    case MONDAY, FRIDAY, SUNDAY -> 6;\r\n    case TUESDAY               -> 7;\r\n    case THURSDAY, SATURDAY    -> 8;\r\n    case WEDNESDAY             -> 9;\r\n    default -> throw new IllegalStateException(\"Unknown: \" + day);\r\n};",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "4da97b9a-092e-42dd-8365-0926f83c4ae6",
+      "cell_type": "markdown",
+      "source": "### Pattern matching",
+      "metadata": {
+        "language": "markdown",
+        "id": "4da97b9a-092e-42dd-8365-0926f83c4ae6"
+      }
+    },
+    {
+      "id": "d69ab5a7-ae08-4672-9afc-bab10ce5f849",
+      "cell_type": "code",
+      "source": "// Before Java 14 — two-step check + cast\r\nif (obj instanceof String) {\r\n    String s = (String) obj;   // redundant cast\r\n    System.out.println(s.length());\r\n}\r\n\r\n// Java 14 — bind in one expression\r\nif (obj instanceof String s) {\r\n    System.out.println(s.length());  // s is already a String\r\n}\r\n\r\n// Variable is scoped to the 'true' branch only\r\nObject obj = \"Hello\";\r\n\r\nif (obj instanceof String s && s.length() > 3) {\r\n    // s is in scope here\r\n    System.out.println(s.toUpperCase());\r\n}\r\n// s is NOT in scope here\r\n\r\n// Works with negation too\r\nif (!(obj instanceof String s)) {\r\n    throw new IllegalArgumentException(\"Expected String\");\r\n}\r\n// s is in scope past the early return / throw",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "d0c2c691-4cb1-4ba7-871a-cb85356fd619",
+      "cell_type": "markdown",
+      "source": "### Record",
+      "metadata": {
+        "language": "markdown",
+        "id": "d0c2c691-4cb1-4ba7-871a-cb85356fd619"
+      }
+    },
+    {
+      "id": "9472ed93-a87c-4bb6-89fa-9481a8f0f16c",
+      "cell_type": "code",
+      "source": "// Java 14 record — 1 line\r\nrecord Point(int x, int y) {}\r\n\r\n// Equivalent pre-14 class — ~30 lines\r\nfinal class Point {\r\n    private final int x;\r\n    private final int y;\r\n    Point(int x, int y) { this.x = x; this.y = y; }\r\n    int x() { return x; }\r\n    int y() { return y; }\r\n    @Override public boolean equals(Object o) { ... }\r\n    @Override public int hashCode() { ... }\r\n    @Override public String toString() { ... }\r\n}\r\n\r\n\r\nrecord Range(int lo, int hi) {\r\n\r\n    // Compact canonical constructor — no parameter list needed\r\n    Range {\r\n        if (lo > hi) throw new IllegalArgumentException(lo + \" > \" + hi);\r\n    }\r\n\r\n    // Custom instance method\r\n    int length() { return hi - lo; }\r\n\r\n    // Static factory\r\n    static Range of(int lo, int hi) { return new Range(lo, hi); }\r\n}\r\n\r\n// Usage\r\nvar r = Range.of(1, 10);\r\nSystem.out.println(r.lo());     // 1\r\nSystem.out.println(r.length()); // 9\r\nSystem.out.println(r);          // Range[lo=1, hi=10]\r\n\r\n\r\n// Implementing an interface with a record\r\n\r\ninterface Shape { double area(); }\r\n\r\nrecord Circle(double radius) implements Shape {\r\n    @Override\r\n    public double area() { return Math.PI * radius * radius; }\r\n}\r\n\r\nrecord Rectangle(double w, double h) implements Shape {\r\n    @Override\r\n    public double area() { return w * h; }\r\n}\r\n\r\nShape s = new Circle(5.0);\r\nSystem.out.println(s.area()); // 78.539...",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "09000c28-30db-4eb2-8fc8-8f05d30f0af6",
+      "cell_type": "markdown",
+      "source": "### Text Blocks",
+      "metadata": {
+        "language": "markdown",
+        "id": "09000c28-30db-4eb2-8fc8-8f05d30f0af6"
+      }
+    },
+    {
+      "id": "7f2b4ed6-e948-4885-8d33-d400d968f7c0",
+      "cell_type": "code",
+      "source": "// Before — escape-heavy single-line concatenation\r\nString json = \"{\\n\" +\r\n              \"  \\\"name\\\": \\\"Alice\\\",\\n\" +\r\n              \"  \\\"age\\\": 30\\n\" +\r\n              \"}\";\r\n\r\n// Java 14 text block\r\nString json = \"\"\"\r\n        {\r\n          \"name\": \"Alice\",\r\n          \"age\": 30\r\n        }\r\n        \"\"\";\r\n// Incidental leading whitespace is stripped automatically\r\n\r\n// \\<line-terminator>  — suppress the newline (join lines visually)\r\nString text = \"\"\"\r\n        Hello, \\\r\n        World!\r\n        \"\"\";\r\n// Result: \"Hello, World!\\n\"   (single line)\r\n\r\n// \\s  — explicit trailing space (prevents trimming)\r\nString cols = \"\"\"\r\n        red  \\s\r\n        green\\s\r\n        blue \\s\r\n        \"\"\";\r\n// Each line has exactly one trailing space preserved\r\n\r\n// Inline HTML\r\nString html = \"\"\"\r\n        <html>\r\n            <body>\r\n                <p>Hello, %s!</p>\r\n            </body>\r\n        </html>\r\n        \"\"\".formatted(\"Alice\");\r\n\r\n// SQL query\r\nString query = \"\"\"\r\n        SELECT id, name, salary\r\n        FROM   employees\r\n        WHERE  department = 'Engineering'\r\n          AND  salary > 80000\r\n        ORDER  BY salary DESC\r\n        \"\"\";",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "e9335652-bc5d-481b-9d18-9a278ce5dd28",
+      "cell_type": "markdown",
+      "source": "## Platform",
+      "metadata": {
+        "language": "markdown",
+        "id": "e9335652-bc5d-481b-9d18-9a278ce5dd28"
+      }
+    },
+    {
+      "id": "80df9952-c597-41a0-b65a-d68e02f7e143",
+      "cell_type": "code",
+      "source": "### Helpful NullPointerException messages\r\n\r\n// Chained call\r\na.b.c.d = 42;\r\n\r\n// Java 13 and earlier:\r\n// NullPointerException  (no detail)\r\n\r\n// Java 14+:\r\n// NullPointerException: Cannot read field \"c\"\r\n//   because \"a.b\" is null\r\n\r\n// Array example\r\nint[] arr = null;\r\nint x = arr[0];\r\n// Java 14: Cannot load from int array\r\n//   because \"arr\" is null",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}

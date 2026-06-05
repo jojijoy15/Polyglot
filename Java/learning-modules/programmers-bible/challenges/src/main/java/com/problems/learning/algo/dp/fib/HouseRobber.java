@@ -1,9 +1,14 @@
 package com.problems.learning.algo.dp.fib;
 
+import com.problems.learning.tags.Easy;
+import com.problems.learning.tags.Medium;
+
 import java.util.Arrays;
 
+@Medium
 public class HouseRobber {
 
+    @Easy
     public int rob(int[] treasure) {
         if (treasure == null || treasure.length == 0) {
             return 0;
@@ -25,6 +30,7 @@ public class HouseRobber {
      * Key insight: we can never rob both house[0] and house[n-1].
      * So answer = max(rob(house[0..n-2]), rob(house[1..n-1]))
      */
+    @Medium
     public int robCircular(int[] treasure) {
         if (treasure == null || treasure.length == 0) return 0;
         if (treasure.length == 1) return treasure[0];

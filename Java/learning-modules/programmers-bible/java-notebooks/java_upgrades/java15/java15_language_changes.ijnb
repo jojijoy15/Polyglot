@@ -1,0 +1,193 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 5,
+  "metadata": {
+    "language_info": {
+      "name": "java"
+    }
+  },
+  "cells": [
+    {
+      "id": "f08c1619-709b-444c-b57d-a8a4c7e6d95a",
+      "cell_type": "markdown",
+      "source": "# Java 15 Changes\n\n## Language changes\n\n\n### Standard\n\n- Text Block\n\n    - Text Blocks graduate from second-preview (Java 14) to a permanent language feature. \n    - Triple-quoted multi-line strings with automatic incidental-whitespace stripping and the escape sequences introduced in JEP 368.\n\n\n### Preview\n\n- Records\n\n    - Second preview of records (first was Java 14 / JEP 359). \n    - Refinements: local record classes inside methods are now allowed; records can be annotated; generic records are supported. \n    - The compiler continues to auto-generate canonical constructor, accessors, equals(), hashCode(), toString().\n\n```sh\n    # Records are still preview in Java 15 — must opt in\n    javac --enable-preview --release 15 MyClass.java\n    java  --enable-preview MyClass\n\n```\n\n- Sealed classes\n\n    - New language feature (first preview). \n    - A sealed class or interface restricts which other classes/interfaces may extend or implement it, using the permits clause.\n    - Enables exhaustive type hierarchies and works naturally with pattern matching.\n\n- Pattern Matching of `instanceof`\n\n    - Second preview (first was Java 14 / JEP 305).\n    - No spec changes from the first preview — the re-preview collects further feedback. \n    - Binds a pattern variable in the instanceof check, eliminating the explicit cast.\n\n## Platform Changes\n\n### Standard\n\n- ZGC Production Ready\n    - ZGC graduates from experimental (Java 11–14) to a fully supported production GC. \n    - Sub-millisecond pause times, concurrent compaction, and heap sizes from 8 MB to 16 TB.\n    - Available on Linux, macOS (Java 14+), and Windows (Java 14+).\n\n```sh\n\n    # Use ZGC (now fully production-supported)\n    java -XX:+UseZGC -Xmx4g MyApp\n\n    # Soft max heap — ZGC returns memory to OS proactively\n    java -XX:+UseZGC -Xms256m -Xmx8g \\\n        -XX:SoftMaxHeapSize=2g MyApp\n\n    # Log ZGC activity\n    java -XX:+UseZGC \\\n        -Xlog:gc*:gc.log:time,uptime \\\n        MyApp\n\n    # Tune concurrent GC threads\n    java -XX:+UseZGC \\\n        -XX:ConcGCThreads=4 \\\n        MyApp\n\n    # G1 (default) — balanced throughput/latency\n    java -XX:+UseG1GC \\\n        -XX:MaxGCPauseMillis=200 \\\n        MyApp\n\n    # ZGC — ultra-low latency (< 1 ms pauses)\n    java -XX:+UseZGC MyApp\n\n    # Verify active GC\n    java -XX:+UseZGC \\\n        -Xlog:gc::time MyApp\n    # [2024-...] Using ZGC\n```\n\n- Shenondoah GC\n    - Shenandoah graduates from experimental to fully supported.\n    - Like ZGC, it performs concurrent compaction to keep GC pause times low and independent of heap size.\n    - Open-source; available in OpenJDK builds.\n\n```sh\n\n    # Use Shenandoah (now production-supported)\n    java -XX:+UseShenandoahGC -Xmx4g MyApp\n\n    # Heuristics — adaptive (default), static, compact, aggressive\n    java -XX:+UseShenandoahGC \\\n        -XX:ShenandoahGCHeuristics=adaptive \\\n        MyApp\n\n    # GC logging\n    java -XX:+UseShenandoahGC \\\n        -Xlog:gc*:shenandoah.log:time \\\n        MyApp\n\n    # Note: not available in all JDK distributions\n    # (included in OpenJDK builds; check your vendor)\n```\n\n- Edwards-Curve Digital Singature\n\n    - Adds EdDSA cryptography (RFC 8032) to the JCA.\n    - Ed25519 and Ed448 curves offer better security and performance than RSA or ECDSA at comparable key sizes.\n    - Platform-independent implementation.\n\n- Hidden Classes\n\n    - Introduces hidden classes: classes generated at runtime that cannot be discovered by name, linked by other classes, or accessed via reflection. \n    - Designed as a replacement for Unsafe::defineAnonymousClass, used internally by lambdas and other framework code.\n\n- DatagramSocket API\n\n    - Replaces the underlying implementations of java.net.DatagramSocket and java.net.MulticastSocket with a modern, maintainable implementation — completing the socket reimplementation started by JEP 353 (Java 13) for TCP sockets. \n    - The public API is unchanged.\n\n```java\n\n    import java.net.*;\n\n    // DatagramSocket API — unchanged; only internals replaced\n    try (DatagramSocket socket = new DatagramSocket(9000)) {\n        byte[] buf = new byte[1024];\n        DatagramPacket packet = new DatagramPacket(buf, buf.length);\n\n        socket.receive(packet);  // blocks until datagram arrives\n        String msg = new String(packet.getData(), 0, packet.getLength());\n        System.out.println(\"Received: \" + msg);\n    }\n\n    // MulticastSocket — same API, new internals\n    try (MulticastSocket ms = new MulticastSocket(5000)) {\n        InetAddress group = InetAddress.getByName(\"230.0.0.0\");\n        ms.joinGroup(group);\n        // receive multicast packets as before\n        ms.leaveGroup(group);\n    }\n```\n\n```sh\n\n# If you encounter a regression, roll back to old impl:\njava -Djdk.net.usePlainDatagramSocketImpl=true MyApp\n\n# (This escape hatch will be removed in a future release)\n```\n### Deprecated\n\n\n\n### Removed",
+      "metadata": {
+        "language": "markdown",
+        "id": "f08c1619-709b-444c-b57d-a8a4c7e6d95a"
+      }
+    },
+    {
+      "id": "14511795-2e69-4a4e-9400-614ca0021620",
+      "cell_type": "markdown",
+      "source": "### Text Block",
+      "metadata": {
+        "language": "markdown",
+        "id": "14511795-2e69-4a4e-9400-614ca0021620"
+      }
+    },
+    {
+      "id": "0ddec585-aa1e-402c-8a36-3c2bf05ec28c",
+      "cell_type": "code",
+      "source": "// Before Java 15 — escape-heavy string concatenation\r\nString html = \"<html>\\n\" +\r\n              \"  <body>\\n\" +\r\n              \"    <p>Hello</p>\\n\" +\r\n              \"  </body>\\n\" +\r\n              \"</html>\";\r\n\r\n// Java 15 — permanent text block syntax\r\nString html = \"\"\"\r\n        <html>\r\n          <body>\r\n            <p>Hello</p>\r\n          </body>\r\n        </html>\r\n        \"\"\";\r\n// Incidental leading whitespace is stripped to the\r\n// column of the least-indented content line.\r\n\r\n// \\<line-terminator> — suppress the newline (join lines)\r\nString s = \"\"\"\r\n        Hello, \\\r\n        World!\r\n        \"\"\";\r\n// Result: \"Hello, World!\\n\"\r\n\r\n// \\s — explicit trailing space (prevents auto-trim)\r\nString padded = \"\"\"\r\n        red  \\s\r\n        green\\s\r\n        blue \\s\r\n        \"\"\";\r\n// Each line has exactly one preserved trailing space\r\n\r\n// String::formatted() works inline\r\nString page = \"\"\"\r\n        <!DOCTYPE html>\r\n        <html>\r\n          <head><title>%s</title></head>\r\n          <body><p>Welcome, %s!</p></body>\r\n        </html>\r\n        \"\"\".formatted(\"My Site\", \"Alice\");\r\n\r\n// SQL query\r\nString query = \"\"\"\r\n        SELECT id, name, salary\r\n        FROM   employees\r\n        WHERE  dept   = 'Engineering'\r\n          AND  active = true\r\n        ORDER  BY salary DESC\r\n        \"\"\";",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "faaea451-bc94-44d1-b307-756d7384e848",
+      "cell_type": "markdown",
+      "source": "### Records",
+      "metadata": {
+        "language": "markdown",
+        "id": "faaea451-bc94-44d1-b307-756d7384e848"
+      }
+    },
+    {
+      "id": "efab0449-7afc-442b-824c-91bd860ed46c",
+      "cell_type": "code",
+      "source": "// Records can now be declared inside a method\r\nList<Order> orders = fetchOrders();\r\n\r\n// Local record — visible only in this method\r\nrecord OrderSummary(String id, double total) {}\r\n\r\nList<OrderSummary> summaries = orders.stream()\r\n    .map(o -> new OrderSummary(o.id(), o.subtotal() * 1.1))\r\n    .sorted(Comparator.comparingDouble(OrderSummary::total))\r\n    .toList();\r\n\r\nsummaries.forEach(System.out::println);",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "72c917d1-5514-4937-a2f7-484a7028c70c",
+      "cell_type": "code",
+      "source": "// Generic record\r\nrecord Pair<A, B>(A first, B second) {\r\n    // Compact canonical constructor for validation\r\n    Pair {\r\n        Objects.requireNonNull(first,  \"first must not be null\");\r\n        Objects.requireNonNull(second, \"second must not be null\");\r\n    }\r\n    // Custom method\r\n    Pair<B, A> swapped() { return new Pair<>(second, first); }\r\n}\r\n\r\nvar pair = new Pair<>(\"hello\", 42);\r\nSystem.out.println(pair.first());      // hello\r\nSystem.out.println(pair.swapped());    // Pair[first=42, second=hello]",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "2721b088-6c2b-42c5-8c82-669bc422df48",
+      "cell_type": "markdown",
+      "source": "### Sealed classes",
+      "metadata": {
+        "language": "markdown",
+        "id": "2721b088-6c2b-42c5-8c82-669bc422df48"
+      }
+    },
+    {
+      "id": "182f2cb8-a8dd-4613-b3a5-29f0dcb67a8a",
+      "cell_type": "code",
+      "source": "// Sealed interface — only these three types may implement it\r\npublic sealed interface Shape\r\n    permits Circle, Rectangle, Triangle {}\r\n\r\n// Each permitted subtype must be:\r\n//   final        — no further extension\r\n//   sealed       — further restricted hierarchy\r\n//   non-sealed   — open to any extension\r\npublic final class Circle    implements Shape {\r\n    double radius() { return radius; }\r\n    private final double radius;\r\n    Circle(double r) { this.radius = r; }\r\n}\r\n\r\npublic final class Rectangle implements Shape {\r\n    double width() { return w; } double height() { return h; }\r\n    private final double w, h;\r\n    Rectangle(double w, double h) { this.w = w; this.h = h; }\r\n}\r\n\r\npublic non-sealed class Triangle implements Shape {\r\n    // Any class can extend Triangle\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "b6c59b37-2538-4064-a0df-ebb3b8033186",
+      "cell_type": "code",
+      "source": "// Works with switch expressions for exhaustive checks\r\n// (full exhaustiveness enforcement arrives with pattern\r\n//  matching for switch in Java 17+, but the hierarchy\r\n//  is already useful for instanceof chains)\r\ndouble area(Shape s) {\r\n    if (s instanceof Circle c) {\r\n        return Math.PI * c.radius() * c.radius();\r\n    } else if (s instanceof Rectangle r) {\r\n        return r.width() * r.height();\r\n    } else if (s instanceof Triangle t) {\r\n        return computeTriangleArea(t);\r\n    }\r\n    // Compiler knows Shape is sealed — no unknown subtypes\r\n    throw new AssertionError(\"Unreachable\");\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "2727bf2b-9be0-4948-b078-75d179eb6252",
+      "cell_type": "code",
+      "source": "// All permitted types must be in the same package\r\n// (or same compilation unit for unnamed packages)\r\n\r\n// Shape.java\r\npackage com.example.shapes;\r\npublic sealed interface Shape\r\n    permits Circle, Rectangle {}   // in same package\r\n\r\n// Circle.java\r\npackage com.example.shapes;\r\npublic final class Circle implements Shape { ... }\r\n\r\n// Compile with preview enabled\r\n// javac --enable-preview --release 15 *.java\r\n// java  --enable-preview com.example.Main",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "6735bbf4-7f26-4fc5-b1ab-10699aadd12b",
+      "cell_type": "markdown",
+      "source": "### Pattern Matching",
+      "metadata": {
+        "language": "markdown",
+        "id": "6735bbf4-7f26-4fc5-b1ab-10699aadd12b"
+      }
+    },
+    {
+      "id": "cd9403ed-f431-43c8-b3d8-55706777cf0b",
+      "cell_type": "code",
+      "source": "// Before — manual cast\r\nif (obj instanceof String) {\r\n    String s = (String) obj;\r\n    System.out.println(s.toUpperCase());\r\n}\r\n\r\n// Java 15 — pattern variable bound automatically\r\nif (obj instanceof String s) {\r\n    System.out.println(s.toUpperCase());\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "7409ac19-2e98-467d-970f-9c00dfeb83a8",
+      "cell_type": "code",
+      "source": "// Pattern variable can be used in the same condition\r\nif (obj instanceof String s && s.length() > 5) {\r\n    System.out.println(\"Long string: \" + s);\r\n}\r\n\r\n// Negation — s scoped after the block\r\nif (!(obj instanceof String s)) {\r\n    throw new IllegalArgumentException(\"Not a string\");\r\n}\r\n// s is in scope here\r\nSystem.out.println(s.trim());\r\n\r\n// javac --enable-preview --release 15 MyClass.java\r\n// java  --enable-preview MyClass",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "efbe1c23-120b-475e-863f-5c5d9e8812fb",
+      "cell_type": "markdown",
+      "source": "###  Platform Changes\r\n\r\n#### Encryption",
+      "metadata": {
+        "language": "markdown",
+        "id": "efbe1c23-120b-475e-863f-5c5d9e8812fb"
+      }
+    },
+    {
+      "id": "37d757ac-118e-487b-adad-925538b7c944",
+      "cell_type": "code",
+      "source": "import java.security.*;\r\n\r\n/*\r\n Key Generation & signing with EdDSA\r\n*/\r\n// Generate an Ed25519 key pair\r\nKeyPairGenerator kpg = KeyPairGenerator.getInstance(\"Ed25519\");\r\nKeyPair kp = kpg.generateKeyPair();\r\n\r\n// Sign data\r\nSignature sig = Signature.getInstance(\"Ed25519\");\r\nsig.initSign(kp.getPrivate());\r\nsig.update(\"Hello, EdDSA!\".getBytes());\r\nbyte[] signature = sig.sign();\r\n\r\n// Verify\r\nsig.initVerify(kp.getPublic());\r\nsig.update(\"Hello, EdDSA!\".getBytes());\r\nboolean valid = sig.verify(signature);\r\nSystem.out.println(\"Valid: \" + valid); // true",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "724e3a91-5d29-4bb7-9cfe-b875d4f01e88",
+      "cell_type": "code",
+      "source": "import java.security.*;\r\nimport java.security.spec.*;\r\n\r\n// Ed448 — higher security (224-bit security level)\r\nKeyPairGenerator kpg448 = KeyPairGenerator.getInstance(\"Ed448\");\r\nKeyPair kp448 = kpg448.generateKeyPair();\r\n\r\n// NamedParameterSpec gives fine-grained control\r\nKeyPairGenerator kpg = KeyPairGenerator\r\n    .getInstance(\"EdDSA\");\r\nkpg.initialize(NamedParameterSpec.ED25519);\r\nKeyPair kp = kpg.generateKeyPair();\r\n\r\n// Keys are standard JCA — work with existing APIs\r\nbyte[] pubEncoded = kp.getPublic().getEncoded();\r\nSystem.out.println(kp.getPublic().getAlgorithm()); // EdDSA",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "13a56471-2b30-47bf-8030-1a5103f1d8f1",
+      "cell_type": "markdown",
+      "source": "### Hidden Classes",
+      "metadata": {
+        "language": "markdown",
+        "id": "13a56471-2b30-47bf-8030-1a5103f1d8f1"
+      }
+    },
+    {
+      "id": "ad8c8403-a3d1-4509-9204-370d2833ab76",
+      "cell_type": "code",
+      "source": "import java.lang.invoke.*;\r\nimport java.lang.invoke.MethodHandles.Lookup;\r\n\r\n// Load class bytes (e.g. from a template or code gen)\r\nbyte[] classBytes = generateBytecode(); // your bytecode\r\n\r\n// Define a hidden class — nestmate of the lookup class\r\nLookup lookup = MethodHandles.lookup();\r\nLookup hiddenLookup = lookup.defineHiddenClass(\r\n    classBytes,\r\n    true,             // initialize immediately\r\n    Lookup.ClassOption.NESTMATE  // shares private access\r\n);\r\n\r\nClass<?> hiddenClass = hiddenLookup.lookupClass();\r\n\r\n// Hidden class has a synthetic name like:\r\n//   com.example.MyClass/0x00007f...\r\nSystem.out.println(hiddenClass.getName());\r\n\r\n// Cannot be found by name\r\ntry {\r\n    Class.forName(hiddenClass.getName()); // throws\r\n} catch (ClassNotFoundException e) {\r\n    System.out.println(\"Not discoverable by name\");\r\n}",
+      "metadata": {
+        "language": "java"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "id": "8d8b2deb-19b1-445f-b6f0-979db742abc3",
+      "cell_type": "markdown",
+      "source": "",
+      "metadata": {
+        "language": "markdown",
+        "id": "8d8b2deb-19b1-445f-b6f0-979db742abc3"
+      }
+    }
+  ]
+}
